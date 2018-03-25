@@ -30,6 +30,9 @@ central node with details about
 ## Concept
 
 ![picture](img/esp8266.jpg)
+
+![Datasheet](https://nurdspace.nl/ESP8266)
+
 ![picture](img/map.png)
 
 ## TODO:
