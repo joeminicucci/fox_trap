@@ -29,8 +29,8 @@ central node with details about
 
 ## Concept
 
-![Scheme](img/esp8266.jpg)
-![Scheme](img/map.png)
+![picture](img/esp8266.jpg)
+![picture](img/map.png)
 
 ## TODO:
 
