@@ -1,4 +1,4 @@
-# DEF CON 26, Woreless CTF BSSID sensor network
+# DEF CON 26, Wireless CTF BSSID sensor network
 
 ## Background
 
@@ -29,8 +29,8 @@ central node with details about
 
 ## Concept
 
-[(https://bitbucket.com/m1n1/dc719_wctf/src/master/img/esp8266.jpg)|alt=esp8266]
-[(https://bitbucket.com/m1n1/dc719_wctf/src/master/img/map.png)|alt=map]
+![Scheme](img/esp8266.jpg)
+![Scheme](img/map.png)
 
 ## TODO:
 
