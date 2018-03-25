@@ -4,9 +4,13 @@
 
 DEF CON features a Wireless Village with a capture the flag (CTF) 
 competition. 
+
 This CTF offers Bluetooth, Traditional RF, and WiFi challenges. 
+
 Each category contains a radio direction finding (RDF) challenge.
+
 The WiFi variant comes in two flavors: Find the Fox, and Hide & Seek.
+
 
 Find the Fox requires contestants to locate a wireless access point (AP) 
 who's location constantly changes. Typically, this requires a human to 
@@ -25,8 +29,8 @@ central node with details about
 
 ## Concept
 
-![alt text](https://bitbucket.com/m1n1/dc719_wctf/src/master/img/esp8266.jpg)
-![alt text](https://bitbucket.com/m1n1/dc719_wctf/src/master/img/map.png)
+[(https://bitbucket.com/m1n1/dc719_wctf/src/master/img/esp8266.jpg)|alt=esp8266]
+[(https://bitbucket.com/m1n1/dc719_wctf/src/master/img/map.png)|alt=map]
 
 ## TODO:
 
