@@ -29,6 +29,8 @@ central node with details about
 
 ## Concept
 
+The spec for the ESP8266 can be found at the Wiki: https://github.com/esp8266/esp8266-wiki/wiki
+
 ![picture](img/esp8266.jpg)
 
 [Datasheet](https://nurdspace.nl/ESP8266)
