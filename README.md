@@ -46,7 +46,7 @@ central node with details about
 - RE DC badge to act as sensor?
 - Drink
 - Consider using a pi as a C2
-- If we have the memory, we can use a python library such as https://github.com/pirate/mesh-networking, otherwise we'll go with something like https://github.com/Coopdis/easyMesh
+- If we have the memory, we can use a python library such as https://github.com/pirate/mesh-networking, otherwise we'll go with something like hhttps://github.com/gmag11/painlessMesh (up to date) OR https://github.com/Coopdis/easyMesh
 
 
 
