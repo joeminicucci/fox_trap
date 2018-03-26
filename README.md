@@ -45,6 +45,8 @@ central node with details about
 - Hand out sensors to DC26 attendees?
 - RE DC badge to act as sensor?
 - Drink
+- Consider using a pi as a C2
+- If we have the memory, we can use a python library such as https://github.com/pirate/mesh-networking, otherwise we'll go with something like https://github.com/Coopdis/easyMesh
 
 
 
