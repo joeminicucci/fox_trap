@@ -49,6 +49,11 @@ The spec for the ESP8266 can be found at the Wiki: https://github.com/esp8266/es
 - Drink
 - Consider using a pi as a C2
 - If we have the memory, we can use a python library such as https://github.com/pirate/mesh-networking, otherwise we'll go with something like hhttps://github.com/gmag11/painlessMesh (up to date) OR https://github.com/Coopdis/easyMesh
+Links of Interest:
+https://github.com/martin-ger/esp_wifi_repeater
+https://github.com/gmag11/painlessMesh
+https://gitlab.com/painlessMesh/painlessMesh/wikis/bridge-between-mesh-and-another-network
+https://gitlab.com/painlessMesh/painlessMesh/wikis/home
 
 
 
