@@ -42,6 +42,15 @@ The spec for the ESP8266 can be found at the Wiki: https://github.com/esp8266/es
 
 ![picture](img/map.png)
 
+## Getting Started
+
+Once you have the needed parts you can build your development board. Your set up should look like this:
+
+![picture](img/breadboard.png)
+
+To put the ESP8266 into program mode, hold down the GPIO0 button (right) while you reset power with the RESET button (left).
+Deployment of the ESP8266 can follow this same setup. However, the GPIO0 button is not required for operations and can be removed.
+
 ## TODO:
 
 - Determine best way to handle distributed comms, i.e. set up in chain, unicast messages, synchronus, a-sync, etc.
