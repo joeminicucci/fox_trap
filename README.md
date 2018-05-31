@@ -1,5 +1,10 @@
 # DEF CON 26, Wireless CTF BSSID sensor network
 
+https://github.com/esp8266/Arduino
+
+https://github.com/esp8266/Arduino/tree/master/libraries/ESP8266WiFiMesh
+
+
 ## Background
 
 DEF CON features a Wireless Village with a capture the flag (CTF) 
