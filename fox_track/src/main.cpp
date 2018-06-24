@@ -1,50 +1,59 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266WiFiMesh.h>
+#include <painlessMesh.h>
 
-unsigned int request_i = 0;
-unsigned int response_i = 0;
+#define   MESH_PREFIX     "dc719"
+#define   MESH_PASSWORD   "whatdoesthefoxsay?"
+#define   MESH_PORT       5566
 
-String manageRequest(String request);
+Scheduler     userScheduler; // to control your personal task
+painlessMesh  mesh;
+// Prototype
+void receivedCallback( uint32_t from, String &msg );
 
-/* Create the mesh node object */
-ESP8266WiFiMesh mesh_node = ESP8266WiFiMesh(ESP.getChipId(), manageRequest);
 
-/**
-   Callback for when other nodes send you data
-   @request The string received from another node in the mesh
-   @returns The string to send back to the other node
-*/
-String manageRequest(String request) {
-  /* Print out received message */
-  Serial.print("received: ");
-  Serial.println(request);
+// Send my ID every 10 seconds to inform others
+Task logServerTask(10000, TASK_FOREVER, []() {
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& msg = jsonBuffer.createObject();
+    msg["topic"] = "logServer";
+    msg["nodeId"] = mesh.getNodeId();
 
-  /* return a string to send back */
-  char response[60];
-  sprintf(response, "Hello world response #%d from Mesh_Node%d.", response_i++, ESP.getChipId());
-  return response;
-}
+    String str;
+    msg.printTo(str);
+    mesh.sendBroadcast(str);
+
+    // log to serial
+    msg.printTo(Serial);
+    Serial.printf("\n");
+});
 
 void setup() {
   Serial.begin(115200);
-  delay(10);
 
-  Serial.println();
-  Serial.println();
-  Serial.println("Setting up mesh node...");
-  Serial.println(ESP.getChipId());
+  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE | DEBUG ); // all types on
+  //mesh.setDebugMsgTypes( ERROR | CONNECTION | SYNC | S_TIME );  // set before init() so that you can see startup messages
+  mesh.setDebugMsgTypes( ERROR | CONNECTION | S_TIME );  // set before init() so that you can see startup messages
 
-  /* Initialise the mesh node */
-  mesh_node.begin();
+  mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
+  mesh.onReceive(&receivedCallback);
+
+  mesh.onNewConnection([](size_t nodeId) {
+    Serial.printf("New Connection %u\n", nodeId);
+  });
+
+  mesh.onDroppedConnection([](size_t nodeId) {
+    Serial.printf("Dropped Connection %u\n", nodeId);
+  });
+
+  // Add the task to the your scheduler
+  userScheduler.addTask(logServerTask);
+  logServerTask.enable();
 }
 
 void loop() {
-  /* Accept any incoming connections */
-  mesh_node.acceptRequest();
-  Serial.println(">");
-  /* Scan for other nodes and send them a message */
-  char request[60];
-  sprintf(request, "Hello world request #%d from Mesh_Node%d.", request_i++, ESP.getChipId());
-  mesh_node.attemptScan(request);
-  delay(500);
+  userScheduler.execute(); // it will run mesh scheduler as well
+  mesh.update();
+}
+
+void receivedCallback( uint32_t from, String &msg ) {
+  Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
 }
