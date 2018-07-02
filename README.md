@@ -65,9 +65,20 @@ Deployment of the ESP8266 can follow this same setup. However, the GPIO0 button 
 - If we have the memory, we can use a python library such as https://github.com/pirate/mesh-networking, otherwise we'll go with something like hhttps://github.com/gmag11/painlessMesh (up to date) OR https://github.com/Coopdis/easyMesh
 Links of Interest:
 https://github.com/martin-ger/esp_wifi_repeater
-https://github.com/gmag11/painlessMesh
 https://gitlab.com/painlessMesh/painlessMesh/wikis/bridge-between-mesh-and-another-network
 https://gitlab.com/painlessMesh/painlessMesh/wikis/home
+https://gitlab.com/painlessMesh/painlessMesh/wikis/Possible-challenges-in-mesh-formation
 
+
+API References:
+	http://www.smart4smart.com/TaskScheduler.pdf
+	https://gitlab.com/painlessMesh/painlessMesh/wikis/mesh-protocol#time-sync
+	https://gitlab.com/painlessMesh/painlessMesh
+	https://github.com/bblanchon/ArduinoJson
+	https://github.com/arkhipenko/TaskScheduler
+	
+	
+Design documentation:
+![picture](img/initialization.png)
 
 
