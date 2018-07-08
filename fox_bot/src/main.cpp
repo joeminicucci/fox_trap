@@ -22,6 +22,7 @@ extern "C"
 #define SENSOR_ID             0x00
 #define DISABLE 0
 #define ENABLE  1
+#define TIME_PRECISION_MS = 10
 
 //Wifi Configuration
 #define   MESH_PREFIX     "dc719"
@@ -36,6 +37,9 @@ extern "C"
 void botInitialization();
 void channelHop();
 void receivedCallback( uint32_t from, String &msg );
+uint32_t CalculateSynchronizationDelay();
+// uint8_t
+
 
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     _userScheduler; // to control your personal task
@@ -43,13 +47,14 @@ painlessMesh  _mesh;
 Task _botInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &botInitialization, &_userScheduler);
 Task channelHopTask(CHANNEL_HOP_INTERVAL_MS, TASK_FOREVER, &channelHop);
 Task snifferInitialization();
-
+uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 
 // Prototype
 uint16_t _channel = 6;
 size_t logServerId = 0;
 int32_t _startTime = 0;
+uint32_t _synchInterval = 5000; //ms
 unsigned long _initDelay = 15000000;
 
 
@@ -188,18 +193,19 @@ void botInitialization()
 
     //Wait for a specified amount of time to gather the longest RTT from c2..not a brillaint design decision
     _botInitializationTask.delay(_initDelay);
+    //instead of using an async delay, delay all execution so that the sniffer continues its job
     Serial.printf("BOT:botInitialization_END");
 }
 
 void setup() {
   Serial.begin(115200);
-
+  // _botInitializationTask new Task(TASK_IMMEDIATE, TASK_ONCE, &botInitialization, &_userScheduler);
   // Serial.printf("logClient ID:%u",_mesh.getNodeId());
   _userScheduler.addTask(_botInitializationTask);
+    //Calculate synch delay, get offset of delay to current time and either use set or restart
+  _botInitializationTask.restartDelayed(CalculateSynchronizationDelay());
   _botInitializationTask.enable();
   Serial.printf("BOT:SETUP with start time of %i", _startTime);
-
-
 
   // Add the task to the your scheduler
   // _userScheduler.addTask(myLoggingTask);
@@ -235,7 +241,57 @@ void receivedCallback( uint32_t from, String &msg ) {
             ? root["initialize"]
             : _startTime;
     }
-
-
       // Serial.printf("logCleint: Handled from %u msg=%s\n", from, msg.c_str());
+}
+
+uint32_t CalculateSynchronizationDelay(){
+  // uint32_t NextSynchronizationPeriod();
+  //get next sync periods. For now, assume multiples of 5
+  uint32_t current = _mesh.getNodeTime();
+
+  //offset current time from the target interval
+  //pulling by 1ms
+  current = current / 1000;
+  uint32_t nextThreshold = roundUp(current, _synchInterval);
+  return nextThreshold;
+}
+
+//rounds from nearest interval of 10ms (time precision) multiplied by the defined time synchronization
+uint32_t roundUp(uint32_t numToRound, uint32_t multiple)
+{
+    if (multiple == 0)
+        return numToRound;
+
+    int remainder = numToRound % multiple;
+    if (remainder == 0)
+        return numToRound;
+
+    return numToRound + multiple - remainder;
+}
+
+uint8_t MostSignificantBit()
+{
+  uint8_t bytesLen[sizeof(uint32_t)];
+  uint32_t blockSize = 535;
+
+ bytesLen[3] = (blockSize >>  0) & 0xFF;
+ bytesLen[2] = (blockSize >>  8) & 0xFF;
+ bytesLen[1] = (blockSize >> 16) & 0xFF;
+ bytesLen[0] = (blockSize >> 24) & 0xFF;
+
+ bool removeZeroes = true;
+ // std::cout << "bytesLen: 0x";
+ for(size_t i=0; i<sizeof(bytesLen); i++)
+ {
+   if(bytesLen[i] != 0)
+   {
+     return bytesLen[i];
+     // removeZeroes = false;
+   }
+//if(!removeZeroes)
+   // {
+   //   std::cout << std::hex << (int)bytesLen[i];
+   // }
+ }
+ // std::cout << std::endl;
 }
