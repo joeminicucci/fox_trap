@@ -34,28 +34,32 @@ extern "C"
 #define RX_COMM_INTERVAL 10000
 
 //mesh members...NO_OBJECTS == NO_HOPE
-void botInitialization();
+bool botInitialization();
+bool initializeSniffer();
 void channelHop();
+void killEverything();
+void killEverything2();
 void receivedCallback( uint32_t from, String &msg );
 uint32_t CalculateSynchronizationDelay();
-// uint8_t
-
-
-// void receivedCallback( uint31_t from, String &msg );
-Scheduler     _userScheduler; // to control your personal task
-painlessMesh  _mesh;
-Task _botInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &botInitialization, &_userScheduler);
-Task channelHopTask(CHANNEL_HOP_INTERVAL_MS, TASK_FOREVER, &channelHop);
-Task snifferInitialization();
-uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 
 // Prototype
 uint16_t _channel = 6;
 size_t logServerId = 0;
 int32_t _startTime = 0;
-uint32_t _synchInterval = 5000; //ms
+uint32_t _synchInterval = 10000; //ms
 unsigned long _initDelay = 15000000;
+
+// void receivedCallback( uint31_t from, String &msg );
+Scheduler     _userScheduler; // to control your personal task
+painlessMesh  _mesh;
+Task _botInitializationTask(_synchInterval, TASK_ONCE, &botInitialization, &_userScheduler, true, NULL, NULL);
+Task channelHopTask(CHANNEL_HOP_INTERVAL_MS, TASK_FOREVER, &channelHop);
+Task _snifferInitializationTask(_synchInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, true, NULL, &killEverything2);
+uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
+
+
+
 
 
 //*************** DEMARC SNIFFER ***************/
@@ -179,22 +183,24 @@ Task myLoggingTask(RX_COMM_INTERVAL, TASK_FOREVER, []() {
     //Serial.printf("\n");
 });
 
-void botInitialization()
+bool botInitialization()
 {
+    _snifferInitializationTask.disable();
+    wifi_promiscuous_enable(DISABLE);
+
+      _snifferInitializationTask.restartDelayed(_synchInterval);
+    //_mesh.stop();
+    //_snifferInitializationTask.disable();
     Serial.printf("BOT:botInitialization");
 
     _mesh.setDebugMsgTypes(ERROR | CONNECTION);  // set before init() so that you can see startup messages
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
-    //keep the topology from fucking itself
-    _mesh.setRoot(false);
-    // This and all other mesh should ideally now the mesh contains a root
-    _mesh.setContainsRoot(true);
-    _mesh.onReceive(&receivedCallback);
 
     //Wait for a specified amount of time to gather the longest RTT from c2..not a brillaint design decision
-    _botInitializationTask.delay(_initDelay);
+    //_botInitializationTask.delay(_initDelay);
     //instead of using an async delay, delay all execution so that the sniffer continues its job
     Serial.printf("BOT:botInitialization_END");
+    return true;
 }
 
 void setup() {
@@ -202,9 +208,30 @@ void setup() {
   // _botInitializationTask new Task(TASK_IMMEDIATE, TASK_ONCE, &botInitialization, &_userScheduler);
   // Serial.printf("logClient ID:%u",_mesh.getNodeId());
   _userScheduler.addTask(_botInitializationTask);
+  _userScheduler.addTask(_snifferInitializationTask);
+
+  //_userScheduler.addTask(_snifferInitializationTask)
     //Calculate synch delay, get offset of delay to current time and either use set or restart
-  _botInitializationTask.restartDelayed(CalculateSynchronizationDelay());
-  _botInitializationTask.enable();
+
+    Serial.printf("TIME DELAY is: %i mS\n", _synchInterval);
+    int synchDelay = CalculateSynchronizationDelay();
+    //keep the topology from fucking itself
+    _mesh.setRoot(false);
+    // This and all other mesh should ideally now the mesh contains a root
+    _mesh.setContainsRoot(true);
+    _mesh.onReceive(&receivedCallback);
+
+    // delay(synchDelay);
+    // _botInitializationTask.setInterval(_synchInterval);
+    _botInitializationTask.enable();
+  //_botInitializationTask.restartDelayed();
+//delay(_synchInterval);
+// _botInitializationTask.disable();
+
+  // _botInitializationTask.setInterval(_synchInterval);
+  //delay(_synchInterval / 2 );
+
+  //_snifferInitializationTask.enable();
   Serial.printf("BOT:SETUP with start time of %i", _startTime);
 
   // Add the task to the your scheduler
@@ -214,21 +241,30 @@ void setup() {
   // channelHopTask.enable();
 
   //SNIFFER
-  // delay(10);
-  // wifi_set_opmode(STATION_MODE);
-  // wifi_set_channel(1);
-  // wifi_promiscuous_enable(DISABLE);
-  // Serial.printf("promiscuos disable\n");
-  // wifi_set_promiscuous_rx_cb(sniffer_callback);
-  // Serial.printf("promiscuos callback set\n");
-  // wifi_promiscuous_enable(ENABLE);
-  // Serial.printf("promiscuos enable\n");
+  //delay(10);
 }
 
 void loop() {
     _userScheduler.execute(); // it will run _mesh scheduler as well
     _mesh.update();
 }
+
+void killEverything(){
+    //_userScheduler.disableAll( true);
+    //_mesh.stop();
+    //_snifferInitializationTask.enable();
+    Serial.printf("GOODBYE BOT. Hello Sniffy");
+}
+void killEverything2(){
+    //_userScheduler.disableAll( true);
+    //_mesh.stop();
+    //_botInitializationTask.enable();
+    //wifi_promiscuous_enable(DISABLE);
+    //STA_AP mode
+    wifi_set_opmode(0x03);
+    Serial.printf("GOODBYE SNIFFY. Hello bot");
+}
+
 
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("logClient: Received from %u msg=%s\n", from, msg.c_str());
@@ -242,6 +278,25 @@ void receivedCallback( uint32_t from, String &msg ) {
             : _startTime;
     }
       // Serial.printf("logCleint: Handled from %u msg=%s\n", from, msg.c_str());
+}
+
+bool initializeSniffer(){
+    _botInitializationTask.disable();
+    //_mesh.stop();
+
+    // _botInitializationTask.delay(_synchInterval);
+    _botInitializationTask.restartDelayed(_synchInterval);
+    wifi_set_opmode(STATION_MODE);
+    //_mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_STA, _channel);
+
+    wifi_set_channel(1);
+    // wifi_promiscuous_enable(DISABLE);
+    // Serial.printf("promiscuos disable\n");
+    wifi_set_promiscuous_rx_cb(sniffer_callback);
+    Serial.printf("promiscuos callback set\n");
+    wifi_promiscuous_enable(ENABLE);
+    Serial.printf("promiscuos enable\n");
+    return true;
 }
 
 uint32_t CalculateSynchronizationDelay(){

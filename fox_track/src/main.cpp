@@ -72,7 +72,7 @@ void rootInitialization(){
     //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE | DEBUG ); // all types on
     //mesh.setDebugMsgTypes( ERROR | CONNECTION | SYNC | S_TIME );  // set before init() so that you can see startup messages
 
-    _mesh.setDebugMsgTypes( ERROR | CONNECTION );  // set before init() so that you can see startup messages
+    _mesh.setDebugMsgTypes( ERROR | CONNECTION | SYNC | COMMUNICATION);  // set before init() so that you can see startup messages
 
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
     _mesh.onReceive(&receivedCallback);
