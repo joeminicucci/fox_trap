@@ -30,7 +30,7 @@ extern "C"
 #define   MESH_PORT       5566
 
 //Scheduling Intervals
-#define RX_PER_CHANNEL_HOP 3
+// #define RX_PER_CHANNEL_HOP 3
 #define RX_COMM_INTERVAL 10000
 
 //mesh members...NO_OBJECTS == NO_HOPE
@@ -52,15 +52,16 @@ uint16_t _channel = 6;
 size_t logServerId = 0;
 int32_t _startTime = 0;
 uint32_t _meshCommInterval = 15000; //ms
-uint32_t _sniffInterval = 5000; //ms
+uint32_t _sniffInterval = 9000; //ms
 unsigned long _initDelay = 15000000;
 bool _syncd = false;
+uint8_t _channelHopInterval = 400;
 
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     _userScheduler; // to control your personal task
 painlessMesh  _mesh;
 Task _botInitializationTask(_meshCommInterval, TASK_ONCE, &botInitialization, &_userScheduler, true, NULL, &meshDisabled);
-//Task _channelHopTask(TASK_IMMEDIATE, TASK_FOREVER, &channelHop, &_userScheduler, true, NULL, NULL);
+Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userScheduler, true, NULL, NULL);
 Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, true, NULL, &snifferDisabled);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
@@ -139,7 +140,7 @@ Serial.print(addr);
   // printDataSpan(25, SSID_length, snifferPacket->data);
   // if (_channelCount % 2 == -1){
   //     _channelCount = 0;
-      channelHop();
+      // channelHop();
     // }
   Serial.println();
 }
@@ -162,6 +163,7 @@ void channelHop()
   uint8 new_channel = wifi_get_channel() + 1;
   if (new_channel > 13)
     new_channel = 1;
+// Serial.printf("***HOP***\n");
   wifi_set_channel(new_channel);
   // _channelCount+=1;
 }
@@ -195,7 +197,7 @@ bool botInitialization()
     wifi_promiscuous_enable(DISABLE);
 
       _snifferInitializationTask.restartDelayed(_meshCommInterval);
-      // _channelHopTask.restartDelayed(_meshCommInterval);
+      _channelHopTask.restartDelayed(_meshCommInterval);
     Serial.printf("BOT:botInitialization\n");
 
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
@@ -296,8 +298,7 @@ uint32_t roundUp(uint32_t numToRound, uint32_t multiple)
 }
 
 void onTimeAdjusted(int32_t offset){
-    Serial.printf("SNTP GOOD WITH DELTA: %i\n", offset);
-    Serial.printf("SNTP GOOD WITH CURRENT_TIME=: %i\n", _mesh.getNodeTime());
+    Serial.printf("SNTP GOOD WITH CURRENT_TIME=: %i\t DELTA: %i\n", _mesh.getNodeTime(), offset);
     if(!_syncd){
         _syncd = true;
         uint32_t syncDelay = CalculateSynchronizationDelay();
@@ -309,9 +310,12 @@ void onTimeAdjusted(int32_t offset){
         // delay(syncDelay);
         _userScheduler.addTask(_botInitializationTask);
         _userScheduler.addTask(_snifferInitializationTask);
+        _userScheduler.addTask(_channelHopTask);
+
         _botInitializationTask.enableDelayed(syncDelay);
         // _botInitializationTask.delay(syncDelay);
         _snifferInitializationTask.enableDelayed(syncDelay + _meshCommInterval);
+        _channelHopTask.enableDelayed(syncDelay + _meshCommInterval);
         // _snifferInitializationTask.delay(syncDelay);
     }
 }
