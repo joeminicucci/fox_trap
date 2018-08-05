@@ -10,13 +10,17 @@ painlessMesh  _mesh;
 uint16_t _channel = 6;
 int32_t _maxRttDelay = 0;
 unsigned long _initDelay = 15000000;
+uint32_t _acknowledgementInterval = 900000; //ms
+size_t _foundTargetNodeId = 0;
+
 
 
 void receivedCallback( uint32_t from, String &msg );
 void rootInitialization();
+void acknowledgeTarget();
 //Async functions
 Task _rootInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &rootInitialization, &_userScheduler);
-
+// Task _acknowledgementTask(TASK_IMMEDIATE, TASK_FOREVER, &acknowledgeTarget, &_userScheduler, true, NULL, NULL);
 //Send functions
 // Send my ID every 10 seconds to inform others
 Task logServerTask(10000, TASK_FOREVER, []() {
@@ -33,6 +37,17 @@ Task logServerTask(10000, TASK_FOREVER, []() {
     msg.printTo(Serial);
     Serial.printf("\n");
 });
+
+
+void acknowledgeTarget(){
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& msg = jsonBuffer.createObject();
+    msg["found_ack"] = _foundTargetNodeId;
+
+    String str;
+    msg.printTo(str);
+    _mesh.sendBroadcast(str);
+}
 
 void sendInitializationSignal()
 {
@@ -55,7 +70,7 @@ void sendInitializationSignal()
 void newConnectionCallback(uint32_t nodeId) {
     Serial.printf("New Connection %u\n", nodeId);
     //calls to onNodeDelayReceived
-    _mesh.startDelayMeas(nodeId);
+    // _mesh.startDelayMeas(nodeId);
 
 }
 
@@ -72,7 +87,7 @@ void rootInitialization(){
     //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE | DEBUG ); // all types on
     //mesh.setDebugMsgTypes( ERROR | CONNECTION | SYNC | S_TIME );  // set before init() so that you can see startup messages
 
-    _mesh.setDebugMsgTypes(SYNC);  // set before init() so that you can see startup messages
+    _mesh.setDebugMsgTypes(SYNC | CONNECTION | MESH_STATUS | COMMUNICATION);  // set before init() so that you can see startup messages
 
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP, _channel);
     _mesh.onReceive(&receivedCallback);
@@ -81,7 +96,7 @@ void rootInitialization(){
     // This and all other mesh should ideally now the mesh contains a root
     _mesh.setContainsRoot(true);
 
-    _mesh.onNodeDelayReceived(&onNodeDelayReceivedCallback);
+    // _mesh.onNodeDelayReceived(&onNodeDelayReceivedCallback);
     _mesh.onNewConnection(&newConnectionCallback);
 
   //rid of inlines and push to prototype object oriented structure later..be a lazy piece of shit for now..
@@ -90,9 +105,9 @@ void rootInitialization(){
     });
 
     //Wait for a specified amount of time to gather all RTTs from bots..not a brillaint design decision
-    _rootInitializationTask.delay(_initDelay);
+    // _rootInitializationTask.delay(_initDelay);
 
-    sendInitializationSignal();
+    // sendInitializationSignal();
     Serial.printf("ROOT:rootInitialization_END");
 }
 
@@ -116,4 +131,18 @@ void loop() {
 
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(msg);
+  if (root.containsKey("found")) {
+      // if (String("logServer").equals(root["topic"].as<String>())) {
+          // check for on: true or false
+          _foundTargetNodeId = root["nodeId"];
+          signed rssi = root["rssi"];
+
+          Serial.printf("NODE %zu FOUND TARGET WITH RSSI of %4d\n", _foundTargetNodeId, rssi);
+
+
+          //TODO ENABLE ACK TASK
+      // }
+  }
 }

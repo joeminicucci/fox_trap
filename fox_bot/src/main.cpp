@@ -10,14 +10,21 @@ extern "C"
 
 #include <painlessMesh.h>
 #include <cstdint>
+#include <structures.h>
+// #ifndef SNIFFING_H
+// #define SNIFFING_H
+#include "sniffing.h"
+// #endif
 
 
-//Sniffer stuff
-#define DATA_LENGTH           112
-#define TYPE_MANAGEMENT       0x00
-#define TYPE_CONTROL          0x01
-#define TYPE_DATA             0x02
-#define SUBTYPE_PROBE_REQUEST 0x08
+// //Sniffer stuff
+// #define DATA_LENGTH           112
+// #define TYPE_MANAGEMENT       0x00
+// #define TYPE_CONTROL          0x01
+// #define TYPE_DATA             0x02
+// #define SUBTYPE_PROBE_REQUEST 0x08
+// int nothing_new = 0;
+uint8_t _target[6] = { 0x8C, 0x3B, 0xAD, 0x0F, 0x38, 0xBB };
 
 #define SENSOR_ID             0x00
 #define DISABLE 0
@@ -37,6 +44,7 @@ extern "C"
 bool botInitialization();
 bool initializeSniffer();
 void channelHop();
+void resync();
 void meshDisabled();
 void snifferDisabled();
 static void showMetaData();
@@ -44,6 +52,7 @@ uint8_t MostSignificantByte(uint32_t bytes);
 void receivedCallback( uint32_t from, String &msg );
 uint32_t CalculateSynchronizationDelay();
 void onTimeAdjusted(int32_t offset);
+void CalculateSyncAndLaunchTasks();
 
 
 // Prototype
@@ -53,6 +62,7 @@ size_t logServerId = 0;
 int32_t _startTime = 0;
 uint32_t _meshCommInterval = 15000; //ms
 uint32_t _sniffInterval = 9000; //ms
+uint32_t _resyncInterval = 900000; //ms
 unsigned long _initDelay = 15000000;
 bool _syncd = false;
 uint8_t _channelHopInterval = 400;
@@ -60,103 +70,26 @@ uint8_t _channelHopInterval = 400;
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     _userScheduler; // to control your personal task
 painlessMesh  _mesh;
-Task _botInitializationTask(_meshCommInterval, TASK_ONCE, &botInitialization, &_userScheduler, true, NULL, &meshDisabled);
-Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userScheduler, true, NULL, NULL);
-Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, true, NULL, &snifferDisabled);
+Task _botInitializationTask(_meshCommInterval, TASK_ONCE, &botInitialization, &_userScheduler, false, NULL, &meshDisabled);
+Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userScheduler, false, NULL, NULL);
+Task _resyncTask(_resyncInterval, TASK_ONCE, &resync, &_userScheduler, false, NULL, NULL);
+Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, false, NULL, &snifferDisabled);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 
-
-
-
-//*************** DEMARC SNIFFER ***************/
-struct RxControl {
- signed rssi:8; // signal intensity of packet
- unsigned rate:4;
- unsigned is_group:1;
- unsigned:1;
- unsigned sig_mode:2; // 0:is 11n packet; 1:is not 11n packet;
- unsigned legacy_length:12; // if not 11n packet, shows length of packet.
- unsigned damatch0:1;
- unsigned damatch1:1;
- unsigned bssidmatch0:1;
- unsigned bssidmatch1:1;
- unsigned MCS:7; // if is 11n packet, shows the modulation and code used (range from 0 to 76)
- unsigned CWB:1; // if is 11n packet, shows if is HT40 packet or not
- unsigned HT_length:16;// if is 11n packet, shows length of packet.
- unsigned Smoothing:1;
- unsigned Not_Sounding:1;
- unsigned:1;
- unsigned Aggregation:1;
- unsigned STBC:2;
- unsigned FEC_CODING:1; // if is 11n packet, shows if is LDPC packet or not.
- unsigned SGI:1;
- unsigned rxend_state:8;
- unsigned ampdu_cnt:8;
- unsigned channel:4; //which channel this packet in.
- unsigned:12;
-};
-
-struct SnifferPacket{
-    struct RxControl rx_ctrl;
-    uint8_t data[DATA_LENGTH];
-    uint16_t cnt;
-    uint16_t len;
-};
-
-static void getMAC(char *addr, uint8_t* data, uint16_t offset) {
-  sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[offset+0], data[offset+1], data[offset+2], data[offset+3], data[offset+4], data[offset+5]);
-}
-
-static void showMetadata(SnifferPacket *snifferPacket) {
-
-  // Serial.printf("Attempting to show metadata..\n");
-  unsigned int frameControl = ((unsigned int)snifferPacket->data[1] << 8) + snifferPacket->data[0];
-
-  uint8_t version      = (frameControl & 0b0000000000000011) >> 0;
-  uint8_t frameType    = (frameControl & 0b0000000000001100) >> 2;
-  uint8_t frameSubType = (frameControl & 0b0000000011110000) >> 4;
-  uint8_t toDS         = (frameControl & 0b0000000100000000) >> 8;
-  uint8_t fromDS       = (frameControl & 0b0000001000000000) >> 9;
-
-  // Only look for probe request packets
-  if (frameType != TYPE_MANAGEMENT ||
-      frameSubType != SUBTYPE_PROBE_REQUEST)
-        return;
-
-  Serial.print("RSSI: ");
-  Serial.print(snifferPacket->rx_ctrl.rssi, DEC);
-
-  Serial.print(" Ch: ");
-Serial.print(wifi_get_channel());
-
-char addr[] = "00:00:00:00:00:00";
- getMAC(addr, snifferPacket->data, 10);
- Serial.print(" MAC: ");
-Serial.print(addr);
-
-  // uint8_t SSID_length = snifferPacket->data[24];
-  // Serial.print(" SSID: ");
-  // printDataSpan(25, SSID_length, snifferPacket->data);
-  // if (_channelCount % 2 == -1){
-  //     _channelCount = 0;
-      // channelHop();
-    // }
-  Serial.println();
-}
-
 //promiscuous mode
- static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t length) {
-   struct SnifferPacket *snifferPacket = (struct SnifferPacket*) buffer;
-   showMetadata(snifferPacket);
- }
-
-static void printDataSpan(uint16_t start, uint16_t size, uint8_t* data) {
-  for(uint16_t i = start; i < DATA_LENGTH && i < start+size; i++) {
-    Serial.write(data[i]);
-  }
-}
-
+//  static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t length) {
+//      // Serial.printf("free heap: %i\n", ESP.getFreeHeap());
+//    struct sniffer_buf2  *snifferPacket = (struct sniffer_buf2*) buffer;
+//    showMetadata(snifferPacket);
+//  }
+//
+// static void printDataSpan(uint16_t start, uint16_t size, uint8_t* data) {
+//   for(uint16_t i = start; i < DATA_LENGTH && i < start+size; i++) {
+//     Serial.write(data[i]);
+//   }
+// }
+//
 void channelHop()
 {
   // hoping channels 1-14
@@ -167,7 +100,276 @@ void channelHop()
   wifi_set_channel(new_channel);
   // _channelCount+=1;
 }
+
+void resync()
+{
+    _syncd = false;
+    _resyncTask.restartDelayed();
+}
 //*************** DEMARC SNIFFER ***************/
+struct beaconinfo parse_beacon(uint8_t *frame, uint16_t framelen, signed rssi)
+{
+  // takes 112 byte beacon frame
+  struct beaconinfo bi;
+  bi.ssid_len = 0;
+  bi.channel = 0;
+  bi.err = 0;
+  bi.rssi = rssi;
+  bi.last_heard=millis()/1000;
+  bi.reported=0;
+  bi.header=frame[0];
+  int pos = 36;
+  uint8_t frame_type= (frame[0] & 0x0C)>>2;
+  uint8_t frame_subtype= (frame[0] & 0xF0)>>4;
+  if (frame[pos] == 0x00) {
+    while (pos < framelen) {
+      switch (frame[pos]) {
+        case 0x00: //SSID
+          bi.ssid_len = (int) frame[pos + 1];
+          if (bi.ssid_len == 0) {
+            memset(bi.ssid, '\x00', 33);
+            break;
+          }
+          if (bi.ssid_len < 0) {
+            bi.err = -1;
+            break;
+          }
+          if (bi.ssid_len > 32) {
+            bi.err = -2;
+            break;
+          }
+          memset(bi.ssid, '\x00', 33);
+          memcpy(bi.ssid, frame + pos + 2, bi.ssid_len);
+          bi.err = 0;  // before was error??
+          break;
+        case 0x03: //Channel
+          bi.channel = (int) frame[pos + 2];
+          pos = -1;
+          break;
+        default:
+          break;
+      }
+      if (pos < 0) break;
+      pos += (int) frame[pos + 1] + 2;
+    }
+  } else {
+    bi.err = -3;
+  }
+
+  bi.capa[0] = frame[34];
+  bi.capa[1] = frame[35];
+  memcpy(bi.bssid, frame + 10, ETH_MAC_LEN);
+  return bi;
+};
+
+int register_beacon(beaconinfo beacon)
+{
+  // // add beacon to list if not already included
+  int known = 0;   // Clear known flag
+  // for (int u = 0; u < aps_known_count; u++)
+  // {
+    if (! memcmp(_target, beacon.bssid, ETH_MAC_LEN)) {
+      known = 1;
+      // aps_known[u].last_heard = beacon.last_heard;
+      // break;
+    }   // AP known => Set known flag
+  // }
+  // if (! known)  // AP is NEW, copy MAC to array and return it
+  // {
+  //   memcpy(&aps_known[aps_known_count], &beacon, sizeof(beacon));
+  //   aps_known_count++;
+  //
+  //   if ((unsigned int) aps_known_count >=
+  //       sizeof (aps_known) / sizeof (aps_known[0]) ) {
+  //     Serial.printf("exceeded max aps_known\n");
+  //     aps_known_count = 0;
+  //   }
+  // }
+  return known;
+}
+void print_pkt_header(uint8_t *buf, uint16_t len, char *pkt_type)
+{
+  char ssid_name[33];
+  memset(ssid_name, '\x00', 33);
+  Serial.printf("%s", pkt_type);
+  uint8_t frame_control_pkt = buf[12]; // just after the RxControl Structure
+  uint8_t protocol_version = frame_control_pkt & 0x03; // should always be 0x00
+  uint8_t frame_type = (frame_control_pkt & 0x0C) >> 2;
+  uint8_t frame_subtype = (frame_control_pkt & 0xF0) >> 4;
+  uint8_t ds= buf[13] & 0x3;
+
+  // print the 3 MAC-address fields
+  Serial.printf("%02x %02x %02x ", frame_type, frame_subtype, ds);
+  if (len<35) {
+    Serial.printf("Short Packet!! %d\r\n",len);
+    return;
+  }
+  for (int n = 16; n < 22; n++) {
+    Serial.printf("%02x", buf[n]);
+  };
+  Serial.print(" ");
+  for (int n = 22; n < 28; n++) {
+    Serial.printf("%02x", buf[n]);
+  };
+  Serial.print(" ");
+  for (int n = 28; n < 34; n++) {
+    Serial.printf("%02x", buf[n]);
+  };
+  //ACTION frames are 112 long but contain nothing useful
+  if (len>=112 && !( frame_type==0 && frame_subtype==13)) {
+
+    int pos=49;
+    if (frame_type==0 && frame_subtype==4) {
+      pos=37; // probe request frames
+    }
+
+    int bssid_len=(int) buf[pos];
+    if(bssid_len<0 || bssid_len>32) {
+      Serial.printf(" Bad ssid len %d!!\r\n",bssid_len);
+      return;
+    };
+    if (bssid_len==0) {
+      Serial.print(" <open>");
+    } else {
+      memcpy(ssid_name,&(buf[pos+1]),bssid_len);
+      Serial.printf(" %s",ssid_name);
+    };
+    Serial.printf(":%d %d %d ",(int)buf[pos+bssid_len+1],(int)buf[pos+bssid_len+2],(int)buf[pos+bssid_len+3]);
+
+  };
+  Serial.print("\r\n");
+}
+
+
+void print_beacon(beaconinfo beacon)
+{
+  uint64_t now = millis()/1000;
+  if (beacon.err != 0) {
+    Serial.printf("BEACON ERR: (%d)  \r\n", beacon.err);
+  } else {
+    Serial.printf("BEACON: <=============== [%32s]  ", beacon.ssid);
+    for (int i = 0; i < 6; i++) Serial.printf("%02x", beacon.bssid[i]);
+    //Serial.printf(" %02x", beacon.header);
+    Serial.printf(" %3d", beacon.channel);
+    Serial.printf("   %d", (now - beacon.last_heard));
+    Serial.printf("   %d", (beacon.reported));
+    Serial.printf("   %4d\r\n", beacon.rssi);
+
+  }
+}
+void promisc_cb(uint8_t *buf, uint16_t len)
+{
+  int i = 0;
+  uint16_t seq_n_new = 0;
+#ifdef PRINT_RAW_HEADER
+  if (len >= 35) {
+    uint8_t frame_control_pkt = buf[12]; // just after the RxControl Structure
+    uint8_t protocol_version = frame_control_pkt & 0x03; // should always be 0x00
+    uint8_t frame_type = (frame_control_pkt & 0x0C) >> 2;
+    uint8_t frame_subtype = (frame_control_pkt & 0xF0) >> 4;
+
+    struct control_frame *cf=(struct control_frame *)&buf[12];
+
+         switch (cf->type) {
+           case 0:
+            switch (cf->subtype) {
+              case 0:
+               print_pkt_header(buf,len,"ASREQ:");
+               break;
+              case 1:
+               print_pkt_header(buf,len,"ASRSP:");
+               break;
+              case 2:
+               print_pkt_header(buf,len,"RSRSP:");
+               break;
+              case 3:
+               print_pkt_header(buf,len,"RSRSP:");
+               break;
+              case 4:
+               print_pkt_header(buf,len,"PRREQ:");
+               break;
+              case 5:
+               print_pkt_header(buf,len,"PRRSP:");
+               break;
+              case 8:
+               print_pkt_header(buf,len,"BECON:");
+               break;
+              case 9:
+               print_pkt_header(buf,len,"ATIM :");
+               break;
+              case 10:
+               print_pkt_header(buf,len,"DASSO:");
+               break;
+              case 11:
+               print_pkt_header(buf,len,"AUTH :");
+               break;
+              case 12:
+               print_pkt_header(buf,len,"DAUTH:");
+               break;
+              case 13:
+               print_pkt_header(buf,len,"ACTON:");
+               break;
+              default:
+               print_pkt_header(buf,len,"MGMT?:");
+               break;
+            };
+            break;
+           case 1:
+             print_pkt_header(buf,len,"CONTR:");
+             break;
+           case 2:
+             print_pkt_header(buf,len,"DATA :");
+             break;
+           default:
+             print_pkt_header(buf,len,"UNKNOW:");
+         }
+
+  }
+  #endif
+
+  if (len == 12) {
+    struct RxControl *sniffer = (struct RxControl*) buf;
+  } else if (len == 128) {
+    uint8_t frame_control_pkt = buf[12]; // just after the RxControl Structure
+    uint8_t frame_type = (frame_control_pkt & 0x0C) >> 2;
+    uint8_t frame_subtype = (frame_control_pkt & 0xF0) >> 4;
+    struct sniffer_buf2 *sniffer = (struct sniffer_buf2*) buf;
+    if (frame_type == 0 && (frame_subtype == 8 || frame_subtype == 5))
+      {
+        struct beaconinfo beacon = parse_beacon(sniffer->buf, 112, sniffer->rx_ctrl.rssi);
+        if (register_beacon(beacon) == 1)
+        {
+          print_beacon(beacon);
+          // send_alert(beacon);
+          // nothing_new = 0;
+        };
+      }
+      // else if (frame_type ==0 && frame_subtype==4)
+      // {
+      //   struct probeinfo probe = parse_probe(sniffer->buf, 112, sniffer->rx_ctrl.rssi);
+      //   if (register_probe(probe) == 0)
+      //   {
+      //     print_probe(probe);
+      //     nothing_new = 0;
+      //   };
+      // }
+      // else
+      // {
+      //   print_pkt_header(buf,112,"UKNOWN:");
+      // };
+  }
+  // else
+  // {
+    // struct sniffer_buf *sniffer = (struct sniffer_buf*) buf;
+    // struct clientinfo ci = parse_data(sniffer->buf, 36, sniffer->rx_ctrl.rssi, sniffer->rx_ctrl.channel);
+    // if (register_client(ci) == 0) {
+    //   print_client(ci);
+    //   nothing_new = 0;
+    // }
+  // }
+}
+
+
 
 
 // Send message to the logServer every 10 seconds
@@ -188,6 +390,11 @@ Task myLoggingTask(RX_COMM_INTERVAL, TASK_FOREVER, []() {
     //msg.printTo(Serial);
     //Serial.printf("\n");
 });
+
+void sendAlert()
+{
+
+}
 
 bool botInitialization()
 {
@@ -210,30 +417,32 @@ bool botInitialization()
 
 bool initializeSniffer(){
     _botInitializationTask.restartDelayed(_sniffInterval);
+    // _mesh.stop();
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(ENABLE);
     Serial.printf("promiscuos enable\n");
     return true;
 }
 
-
-void setup() {
-  Serial.begin(115200);
-    wifi_set_promiscuous_rx_cb(sniffer_callback);
-    Serial.printf("promiscuos callback set\n");
-
+void meshInitialization(){
     //keep the topology from fucking itself
     _mesh.setRoot(false);
     // This and all other mesh should ideally now the mesh contains a root
     _mesh.setContainsRoot(true);
     _mesh.onReceive(&receivedCallback);
     _mesh.onNodeTimeAdjusted(&onTimeAdjusted);
-    _mesh.setDebugMsgTypes(SYNC);  // set before init() so that you can see startup messages
+    _mesh.setDebugMsgTypes(SYNC | CONNECTION);  // set before init() so that you can see startup messages
     //neeed to connect to the mesh once to get NTP sync
 
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
+}
 
+void setup() {
+  Serial.begin(115200);
+    wifi_set_promiscuous_rx_cb(promisc_cb);
+    Serial.printf("promiscuos callback set\n");
 
+    meshInitialization();
 
   Serial.printf("BOT:SETUP");
 }
@@ -245,11 +454,11 @@ void loop() {
 
 void meshDisabled(){
 
-    Serial.printf("GOODBYE BOT. Hello Sniffy\n");
+    Serial.printf("BOT INITIALIZED\n");
 }
 void snifferDisabled(){
     //STA_AP mode
-    Serial.printf("GOODBYE SNIFFY. Hello bot\n");
+    Serial.printf("SNIFFER INITIALIZED\n");
 }
 
 
@@ -257,14 +466,29 @@ void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("logClient: Received from %u msg=%s\n", from, msg.c_str());
 
   // Saving logServer
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(msg);
-  if (root.containsKey("initialize")) {
-          _startTime = (root["initialize"] > _startTime)
-            ? root["initialize"]
-            : _startTime;
+  // DynamicJsonBuffer jsonBuffer;
+  // JsonObject& root = jsonBuffer.parseObject(msg);
+  // if (root.containsKey("initialize")) {
+  //         _startTime = (root["initialize"] > _startTime)
+  //           ? root["initialize"]
+  //           : _startTime;
+  //   }
+  //
+    DynamicJsonBuffer jsonBuffer;
+    if (logServerId == 0 ){
+        JsonObject& root = jsonBuffer.parseObject(msg);
+        if (root.containsKey("topic") && logServerId == 0) {
+            if (String("logServer").equals(root["topic"].as<String>())) {
+                // check for on: true or false
+                logServerId = root["nodeId"];
+                Serial.printf("logServer detected!!!\n");
+            }
+
+            // Serial.printf("Handled from %u msg=%s\n", from, msg.c_str());
+        }
+        // if ()
     }
-      // Serial.printf("logCleint: Handled from %u msg=%s\n", from, msg.c_str());
+      Serial.printf("logCleint: Handled from %u msg=%s\n", from, msg.c_str());
 }
 
 uint32_t CalculateSynchronizationDelay(){
@@ -298,24 +522,43 @@ uint32_t roundUp(uint32_t numToRound, uint32_t multiple)
 }
 
 void onTimeAdjusted(int32_t offset){
-    Serial.printf("SNTP GOOD WITH CURRENT_TIME=: %i\t DELTA: %i\n", _mesh.getNodeTime(), offset);
+    Serial.printf("SNTP GOOD WITH CURRENT_TIME=: %u\t DELTA: %u\n", _mesh.getNodeTime(), offset);
     if(!_syncd){
         _syncd = true;
-        uint32_t syncDelay = CalculateSynchronizationDelay();
-        Serial.printf("next sync is :%i \n",syncDelay);
-        // Serial.printf("msb of syncDelay is:%i \n",MostSignificantByte(syncDelay));
+        CalculateSyncAndLaunchTasks();
+    }
+}
 
-        //BLOCK THE CPU for first synchronization step
-        // _botInitializationTask.delay(syncDelay);
-        // delay(syncDelay);
+bool addedTasks = false;
+void CalculateSyncAndLaunchTasks()
+{
+    uint32_t syncDelay = CalculateSynchronizationDelay();
+    Serial.printf("next sync is :%i \n",syncDelay);
+    // Serial.printf("msb of syncDelay is:%i \n",MostSignificantByte(syncDelay));
+
+    //BLOCK THE CPU for first synchronization step
+    // _botInitializationTask.delay(syncDelay);
+    // delay(syncDelay);
+    if (!addedTasks){
+        addedTasks = true;
         _userScheduler.addTask(_botInitializationTask);
         _userScheduler.addTask(_snifferInitializationTask);
         _userScheduler.addTask(_channelHopTask);
+        _userScheduler.addTask(_resyncTask);
 
-        _botInitializationTask.enableDelayed(syncDelay);
-        // _botInitializationTask.delay(syncDelay);
-        _snifferInitializationTask.enableDelayed(syncDelay + _meshCommInterval);
-        _channelHopTask.enableDelayed(syncDelay + _meshCommInterval);
-        // _snifferInitializationTask.delay(syncDelay);
+        _resyncTask.enableDelayed();
     }
+        // _botInitializationTask.enableDelayed(syncDelay);
+        // // _botInitializationTask.delay(syncDelay);
+        // _snifferInitializationTask.enableDelayed(syncDelay + _meshCommInterval);
+        // _channelHopTask.enableDelayed(syncDelay + _meshCommInterval);
+
+        // // _userScheduler.disableAll();
+        _botInitializationTask.restartDelayed(syncDelay);
+        _snifferInitializationTask.restartDelayed(syncDelay + _meshCommInterval);
+        _channelHopTask.restartDelayed(syncDelay + _meshCommInterval);
+        // // _resyncTask.restartDelayed();
+
+
+    // _snifferInitializationTask.delay(syncDelay);
 }
