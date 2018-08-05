@@ -24,7 +24,9 @@ extern "C"
 // #define TYPE_DATA             0x02
 // #define SUBTYPE_PROBE_REQUEST 0x08
 // int nothing_new = 0;
-uint8_t _target[6] = { 0x8C, 0x3B, 0xAD, 0x0F, 0x38, 0xBB };
+
+//set target here
+uint8_t _target[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 #define SENSOR_ID             0x00
 #define DISABLE 0
@@ -53,6 +55,9 @@ void receivedCallback( uint32_t from, String &msg );
 uint32_t CalculateSynchronizationDelay();
 void onTimeAdjusted(int32_t offset);
 void CalculateSyncAndLaunchTasks();
+void sendAlert();
+void initializeAlertMode();
+void openMeshComm(bool restartSnifferDelayed = false);
 
 
 // Prototype
@@ -66,6 +71,7 @@ uint32_t _resyncInterval = 900000; //ms
 unsigned long _initDelay = 15000000;
 bool _syncd = false;
 uint8_t _channelHopInterval = 400;
+bool _alertMode = false;
 
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     _userScheduler; // to control your personal task
@@ -74,6 +80,8 @@ Task _botInitializationTask(_meshCommInterval, TASK_ONCE, &botInitialization, &_
 Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userScheduler, false, NULL, NULL);
 Task _resyncTask(_resyncInterval, TASK_ONCE, &resync, &_userScheduler, false, NULL, NULL);
 Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, false, NULL, &snifferDisabled);
+//Task::Task(long unsigned int, int, void (*)(), Scheduler*, bool, void (*)(), void (*)())'
+Task _sendAlertTask(TASK_SECOND, TASK_FOREVER, &sendAlert, &_userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 
@@ -340,7 +348,13 @@ void promisc_cb(uint8_t *buf, uint16_t len)
         if (register_beacon(beacon) == 1)
         {
           print_beacon(beacon);
-          // send_alert(beacon);
+          if (!_sendAlertTask.isEnabled())
+          {
+              //We can thank the wonderful compiler for this hack, i.e. calling this function instead of properly setting the onEnable callback..
+              initializeAlertMode();
+            _sendAlertTask.enable();
+          }
+          // sendAlert(beacon);
           // nothing_new = 0;
         };
       }
@@ -393,26 +407,45 @@ Task myLoggingTask(RX_COMM_INTERVAL, TASK_FOREVER, []() {
 
 void sendAlert()
 {
+    // initializeAlertMode();
+    Serial.printf("ALERT!!!!!!!\n");
 
+}
+
+void initializeAlertMode()
+{
+    if (!_alertMode)
+    {
+    Serial.printf("SETTING ALERT MODE\n");
+        _snifferInitializationTask.disable();
+        _channelHopTask.disable();
+        _botInitializationTask.disable();
+        _resyncTask.disable();
+
+        openMeshComm(false);
+        _syncd = true;
+        _alertMode = true;
+    }
 }
 
 bool botInitialization()
 {
+    openMeshComm(true);
+    // Serial.printf("BOT:botInitialization_END\n");
+    return true;
+}
+
+void openMeshComm(bool restartSnifferDelayed){
     wifi_set_opmode(STATIONAP_MODE);
-    // _snifferInitializationTask.disable();
-    // _channelHopTask.disable();
     wifi_promiscuous_enable(DISABLE);
 
-      _snifferInitializationTask.restartDelayed(_meshCommInterval);
-      _channelHopTask.restartDelayed(_meshCommInterval);
-    Serial.printf("BOT:botInitialization\n");
+    if (restartSnifferDelayed)
+    {
+        _snifferInitializationTask.restartDelayed(_meshCommInterval);
+        _channelHopTask.restartDelayed(_meshCommInterval);
+    }
 
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
-
-    //Wait for a specified amount of time to gather the longest RTT from c2..not a brillaint design decision
-    //_botInitializationTask.delay(_initDelay);
-    Serial.printf("BOT:botInitialization_END\n");
-    return true;
 }
 
 bool initializeSniffer(){
@@ -431,7 +464,7 @@ void meshInitialization(){
     _mesh.setContainsRoot(true);
     _mesh.onReceive(&receivedCallback);
     _mesh.onNodeTimeAdjusted(&onTimeAdjusted);
-    _mesh.setDebugMsgTypes(SYNC | CONNECTION);  // set before init() so that you can see startup messages
+    // _mesh.setDebugMsgTypes(SYNC | CONNECTION);  // set before init() so that you can see startup messages
     //neeed to connect to the mesh once to get NTP sync
 
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
@@ -440,7 +473,7 @@ void meshInitialization(){
 void setup() {
   Serial.begin(115200);
     wifi_set_promiscuous_rx_cb(promisc_cb);
-    Serial.printf("promiscuos callback set\n");
+    // Serial.printf("promiscuos callback set\n");
 
     meshInitialization();
 
@@ -545,8 +578,7 @@ void CalculateSyncAndLaunchTasks()
         _userScheduler.addTask(_snifferInitializationTask);
         _userScheduler.addTask(_channelHopTask);
         _userScheduler.addTask(_resyncTask);
-
-        _resyncTask.enableDelayed();
+        _userScheduler.addTask(_sendAlertTask);
     }
         // _botInitializationTask.enableDelayed(syncDelay);
         // // _botInitializationTask.delay(syncDelay);
@@ -557,6 +589,7 @@ void CalculateSyncAndLaunchTasks()
         _botInitializationTask.restartDelayed(syncDelay);
         _snifferInitializationTask.restartDelayed(syncDelay + _meshCommInterval);
         _channelHopTask.restartDelayed(syncDelay + _meshCommInterval);
+        _resyncTask.restartDelayed();
         // // _resyncTask.restartDelayed();
 
 
