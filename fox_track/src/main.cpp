@@ -23,23 +23,6 @@ void disableAck();
 //Async functions
 Task _rootInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &rootInitialization, &_userScheduler);
 Task _acknowledgementTask(TASK_SECOND * 3, 20, &acknowledgeTargets, &_userScheduler, false, NULL, &disableAck);
-//Send functions
-// Send my ID every 10 seconds to inform others
-// Task logServerTask(10000, TASK_FOREVER, []() {
-//     DynamicJsonBuffer jsonBuffer;
-//     JsonObject& msg = jsonBuffer.createObject();
-//     msg["topic"] = "logServer";
-//     msg["nodeId"] = _mesh.getNodeId();
-//
-//     String str;
-//     msg.printTo(str);
-//     _mesh.sendBroadcast(str);
-//
-//     // log to serial
-//     msg.printTo(Serial);
-//     Serial.printf("\n");
-// });
-
 
 void acknowledgeTargets(){
 
@@ -48,13 +31,6 @@ void acknowledgeTargets(){
 
         DynamicJsonBuffer jsonBuffer;
         JsonObject& msg = jsonBuffer.createObject();
-        // msg["found_ack"] = _foundTargetNodeId;
-    //     for (auto nodeId = _foundTargetNodeIds.begin(); nodeId != _foundTargetNodeIds.end(); ++nodeId)
-    // {
-    //     if (attack->m_num == input)
-    //     {
-    //         attack->makeDamage();
-    //     }
         for (auto nodeId : _foundTargetNodeIds) // access by reference to avoid copying
         {
             msg["found_ack"] = nodeId;
