@@ -16,18 +16,8 @@ extern "C"
 #include "sniffing.h"
 // #endif
 
-
-// //Sniffer stuff
-// #define DATA_LENGTH           112
-// #define TYPE_MANAGEMENT       0x00
-// #define TYPE_CONTROL          0x01
-// #define TYPE_DATA             0x02
-// #define SUBTYPE_PROBE_REQUEST 0x08
-// int nothing_new = 0;
-
 //set target here
 uint8_t _target[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
 #define SENSOR_ID             0x00
 #define DISABLE 0
 #define ENABLE  1
@@ -56,6 +46,7 @@ uint32_t CalculateSynchronizationDelay();
 void onTimeAdjusted(int32_t offset);
 void CalculateSyncAndLaunchTasks();
 void sendAlert();
+void sendFinAck();
 void initializeAlertMode();
 void openMeshComm(bool restartSnifferDelayed = false);
 
@@ -72,6 +63,7 @@ unsigned long _initDelay = 15000000;
 bool _syncd = false;
 uint8_t _channelHopInterval = 400;
 bool _alertMode = false;
+signed _lastFoundRSSI = 0;
 
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     _userScheduler; // to control your personal task
@@ -84,20 +76,6 @@ Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &
 Task _sendAlertTask(TASK_SECOND, TASK_FOREVER, &sendAlert, &_userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
-
-//promiscuous mode
-//  static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t length) {
-//      // Serial.printf("free heap: %i\n", ESP.getFreeHeap());
-//    struct sniffer_buf2  *snifferPacket = (struct sniffer_buf2*) buffer;
-//    showMetadata(snifferPacket);
-//  }
-//
-// static void printDataSpan(uint16_t start, uint16_t size, uint8_t* data) {
-//   for(uint16_t i = start; i < DATA_LENGTH && i < start+size; i++) {
-//     Serial.write(data[i]);
-//   }
-// }
-//
 void channelHop()
 {
   // hoping channels 1-14
@@ -347,6 +325,8 @@ void promisc_cb(uint8_t *buf, uint16_t len)
         struct beaconinfo beacon = parse_beacon(sniffer->buf, 112, sniffer->rx_ctrl.rssi);
         if (register_beacon(beacon) == 1)
         {
+
+            Serial.printf("TARGET ");
           print_beacon(beacon);
           if (!_sendAlertTask.isEnabled())
           {
@@ -354,6 +334,7 @@ void promisc_cb(uint8_t *buf, uint16_t len)
               initializeAlertMode();
             _sendAlertTask.enable();
           }
+          _lastFoundRSSI = beacon.rssi;
           // sendAlert(beacon);
           // nothing_new = 0;
         };
@@ -384,31 +365,20 @@ void promisc_cb(uint8_t *buf, uint16_t len)
 }
 
 
-
-
-// Send message to the logServer every 10 seconds
-Task myLoggingTask(RX_COMM_INTERVAL, TASK_FOREVER, []() {
+void sendAlert()
+{
     DynamicJsonBuffer jsonBuffer;
     JsonObject& msg = jsonBuffer.createObject();
-    msg["topic"] = "sensor";
-    msg["value"] = random(0, 180);
+    msg["found"] = _mesh.getNodeId();
+    msg["rssi"] = _lastFoundRSSI;
 
     String str;
     msg.printTo(str);
-    if (logServerId == 0) // If we don't know the logServer yet
-        _mesh.sendBroadcast(str);
-    else
-        _mesh.sendSingle(logServerId, str);
+    _mesh.sendBroadcast(str);
 
     // log to serial
-    //msg.printTo(Serial);
-    //Serial.printf("\n");
-});
-
-void sendAlert()
-{
-    // initializeAlertMode();
-    Serial.printf("ALERT!!!!!!!\n");
+    msg.printTo(Serial);
+    Serial.printf("\n");
 
 }
 
@@ -416,7 +386,7 @@ void initializeAlertMode()
 {
     if (!_alertMode)
     {
-    Serial.printf("SETTING ALERT MODE\n");
+        Serial.printf("SETTING ALERT MODE\n");
         _snifferInitializationTask.disable();
         _channelHopTask.disable();
         _botInitializationTask.disable();
@@ -477,7 +447,7 @@ void setup() {
 
     meshInitialization();
 
-  Serial.printf("BOT:SETUP");
+  Serial.printf("BOT:SETUP\n");
 }
 
 void loop() {
@@ -508,22 +478,31 @@ void receivedCallback( uint32_t from, String &msg ) {
   //   }
   //
     DynamicJsonBuffer jsonBuffer;
-    if (logServerId == 0 ){
-        JsonObject& root = jsonBuffer.parseObject(msg);
-        if (root.containsKey("topic") && logServerId == 0) {
-            if (String("logServer").equals(root["topic"].as<String>())) {
-                // check for on: true or false
-                logServerId = root["nodeId"];
-                Serial.printf("logServer detected!!!\n");
-            }
+    JsonObject& root = jsonBuffer.parseObject(msg);
+    if (_alertMode && root.containsKey("found_ack") ){
+        if (root["found_ack"] == _mesh.getNodeId())
+        {
 
-            // Serial.printf("Handled from %u msg=%s\n", from, msg.c_str());
+            //try a one ditch effort to get the server to stfu. could make this a multi-ditch effort, but dont want to burn alot of cycles
+            sendFinAck();
+            //pull out of alerted state
+            _sendAlertTask.disable();
+            _alertMode = false;
         }
-        // if ()
     }
-      Serial.printf("logCleint: Handled from %u msg=%s\n", from, msg.c_str());
+      Serial.printf("logClient: Handled from %u msg=%s\n", from, msg.c_str());
 }
 
+void sendFinAck(){
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& msg = jsonBuffer.createObject();
+    msg["fin_ack"] = _mesh.getNodeId();
+    String str;
+    msg.printTo(str);
+    _mesh.sendBroadcast(str);
+    msg.printTo(Serial);
+    Serial.printf("\n");
+}
 uint32_t CalculateSynchronizationDelay(){
   uint32_t current = _mesh.getNodeTime();
 
@@ -567,11 +546,7 @@ void CalculateSyncAndLaunchTasks()
 {
     uint32_t syncDelay = CalculateSynchronizationDelay();
     Serial.printf("next sync is :%i \n",syncDelay);
-    // Serial.printf("msb of syncDelay is:%i \n",MostSignificantByte(syncDelay));
 
-    //BLOCK THE CPU for first synchronization step
-    // _botInitializationTask.delay(syncDelay);
-    // delay(syncDelay);
     if (!addedTasks){
         addedTasks = true;
         _userScheduler.addTask(_botInitializationTask);
@@ -580,18 +555,9 @@ void CalculateSyncAndLaunchTasks()
         _userScheduler.addTask(_resyncTask);
         _userScheduler.addTask(_sendAlertTask);
     }
-        // _botInitializationTask.enableDelayed(syncDelay);
-        // // _botInitializationTask.delay(syncDelay);
-        // _snifferInitializationTask.enableDelayed(syncDelay + _meshCommInterval);
-        // _channelHopTask.enableDelayed(syncDelay + _meshCommInterval);
 
-        // // _userScheduler.disableAll();
-        _botInitializationTask.restartDelayed(syncDelay);
-        _snifferInitializationTask.restartDelayed(syncDelay + _meshCommInterval);
-        _channelHopTask.restartDelayed(syncDelay + _meshCommInterval);
-        _resyncTask.restartDelayed();
-        // // _resyncTask.restartDelayed();
-
-
-    // _snifferInitializationTask.delay(syncDelay);
+    _botInitializationTask.restartDelayed(syncDelay);
+    _snifferInitializationTask.restartDelayed(syncDelay + _meshCommInterval);
+    _channelHopTask.restartDelayed(syncDelay + _meshCommInterval);
+    _resyncTask.restartDelayed();
 }

@@ -11,42 +11,66 @@ uint16_t _channel = 6;
 int32_t _maxRttDelay = 0;
 unsigned long _initDelay = 15000000;
 uint32_t _acknowledgementInterval = 900000; //ms
-size_t _foundTargetNodeId = 0;
+// size_t _foundTargetNodeId = 0;
+std::vector<size_t> _foundTargetNodeIds;
 
 
 
 void receivedCallback( uint32_t from, String &msg );
 void rootInitialization();
-void acknowledgeTarget();
+void acknowledgeTargets();
+void disableAck();
 //Async functions
 Task _rootInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &rootInitialization, &_userScheduler);
-// Task _acknowledgementTask(TASK_IMMEDIATE, TASK_FOREVER, &acknowledgeTarget, &_userScheduler, true, NULL, NULL);
+Task _acknowledgementTask(TASK_SECOND * 3, 20, &acknowledgeTargets, &_userScheduler, false, NULL, &disableAck);
 //Send functions
 // Send my ID every 10 seconds to inform others
-Task logServerTask(10000, TASK_FOREVER, []() {
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& msg = jsonBuffer.createObject();
-    msg["topic"] = "logServer";
-    msg["nodeId"] = _mesh.getNodeId();
+// Task logServerTask(10000, TASK_FOREVER, []() {
+//     DynamicJsonBuffer jsonBuffer;
+//     JsonObject& msg = jsonBuffer.createObject();
+//     msg["topic"] = "logServer";
+//     msg["nodeId"] = _mesh.getNodeId();
+//
+//     String str;
+//     msg.printTo(str);
+//     _mesh.sendBroadcast(str);
+//
+//     // log to serial
+//     msg.printTo(Serial);
+//     Serial.printf("\n");
+// });
 
-    String str;
-    msg.printTo(str);
-    _mesh.sendBroadcast(str);
 
-    // log to serial
-    msg.printTo(Serial);
-    Serial.printf("\n");
-});
+void acknowledgeTargets(){
+
+    if (!_foundTargetNodeIds.empty()){
 
 
-void acknowledgeTarget(){
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& msg = jsonBuffer.createObject();
-    msg["found_ack"] = _foundTargetNodeId;
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject& msg = jsonBuffer.createObject();
+        // msg["found_ack"] = _foundTargetNodeId;
+    //     for (auto nodeId = _foundTargetNodeIds.begin(); nodeId != _foundTargetNodeIds.end(); ++nodeId)
+    // {
+    //     if (attack->m_num == input)
+    //     {
+    //         attack->makeDamage();
+    //     }
+        for (auto nodeId : _foundTargetNodeIds) // access by reference to avoid copying
+        {
+            msg["found_ack"] = nodeId;
+            String str;
+            msg.printTo(str);
+            msg.printTo(Serial);
+            Serial.printf("\n");
+            _mesh.sendBroadcast(str);
+        }
+    }
 
-    String str;
-    msg.printTo(str);
-    _mesh.sendBroadcast(str);
+}
+
+void disableAck()
+{
+    _foundTargetNodeIds.clear();
 }
 
 void sendInitializationSignal()
@@ -87,7 +111,7 @@ void rootInitialization(){
     //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE | DEBUG ); // all types on
     //mesh.setDebugMsgTypes( ERROR | CONNECTION | SYNC | S_TIME );  // set before init() so that you can see startup messages
 
-    _mesh.setDebugMsgTypes(SYNC | CONNECTION | MESH_STATUS | COMMUNICATION);  // set before init() so that you can see startup messages
+    // _mesh.setDebugMsgTypes(SYNC | CONNECTION | MESH_STATUS | COMMUNICATION);  // set before init() so that you can see startup messages
 
     _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP, _channel);
     _mesh.onReceive(&receivedCallback);
@@ -102,6 +126,7 @@ void rootInitialization(){
   //rid of inlines and push to prototype object oriented structure later..be a lazy piece of shit for now..
     _mesh.onDroppedConnection([](size_t nodeId) {
         Serial.printf("Dropped Connection %u\n", nodeId);
+
     });
 
     //Wait for a specified amount of time to gather all RTTs from bots..not a brillaint design decision
@@ -119,8 +144,9 @@ void setup() {
   Serial.begin(115200);
   // _userScheduler.addTask(logServerTask);
   _userScheduler.addTask(_rootInitializationTask);
-  _userScheduler.addTask(logServerTask);
-  _userScheduler.enableAll();
+  // _userScheduler.addTask(logServerTask);
+  _userScheduler.addTask(_acknowledgementTask);
+    _rootInitializationTask.enable();
     // logServerTask.enable();
 }
 
@@ -136,13 +162,22 @@ void receivedCallback( uint32_t from, String &msg ) {
   if (root.containsKey("found")) {
       // if (String("logServer").equals(root["topic"].as<String>())) {
           // check for on: true or false
-          _foundTargetNodeId = root["nodeId"];
-          signed rssi = root["rssi"];
+          // _foundTargetNodeId = root["found"];
+          size_t foundTargetNodeId = root["found"];
+          Serial.printf("NODE %u FOUND TARGET \n", foundTargetNodeId);
 
-          Serial.printf("NODE %zu FOUND TARGET WITH RSSI of %4d\n", _foundTargetNodeId, rssi);
+        if(std::find(_foundTargetNodeIds.begin(), _foundTargetNodeIds.end(), foundTargetNodeId) == _foundTargetNodeIds.end()) {
+            _foundTargetNodeIds.push_back(foundTargetNodeId);
+          // signed rssi = root["rssi"];
+          Serial.printf("NODE %u ADDED TARGET\n", foundTargetNodeId);
+        }
 
-
-          //TODO ENABLE ACK TASK
-      // }
+        //checks if it is diabled and re-enables it. if it is out of iterations AND disabled, restart
+        if( !_acknowledgementTask.enableIfNot()){
+            _acknowledgementTask.restart();
+        }
+  }
+  if (root.containsKey("fin_ack")){
+      _foundTargetNodeIds.erase(std::remove(_foundTargetNodeIds.begin(), _foundTargetNodeIds.end(), root["fin_ack"]), _foundTargetNodeIds.end());
   }
 }
