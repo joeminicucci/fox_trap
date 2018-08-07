@@ -140,12 +140,12 @@ void receivedCallback( uint32_t from, String &msg ) {
           // check for on: true or false
           // _foundTargetNodeId = root["found"];
           size_t foundTargetNodeId = root["found"];
-          Serial.printf("NODE %u FOUND TARGET \n", foundTargetNodeId);
+          Serial.printf("[FOUND]NODE %u FOUND TARGET \n", foundTargetNodeId);
 
         if(std::find(_foundTargetNodeIds.begin(), _foundTargetNodeIds.end(), foundTargetNodeId) == _foundTargetNodeIds.end()) {
             _foundTargetNodeIds.push_back(foundTargetNodeId);
           // signed rssi = root["rssi"];
-          Serial.printf("NODE %u ADDED TARGET\n", foundTargetNodeId);
+          Serial.printf("[ADDED]NODE %u ADDED TARGET\n", foundTargetNodeId);
         }
 
         //checks if it is diabled and re-enables it. if it is out of iterations AND disabled, restart
