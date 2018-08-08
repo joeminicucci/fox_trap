@@ -18,6 +18,7 @@ extern "C"
 
 //set target here
 uint8_t _target[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
 #define SENSOR_ID             0x00
 #define DISABLE 0
 #define ENABLE  1
@@ -49,6 +50,7 @@ void sendAlert();
 void sendFinAck();
 void initializeAlertMode();
 void openMeshComm(bool restartSnifferDelayed = false);
+void LaunchTasks();
 
 
 // Prototype
@@ -74,7 +76,7 @@ Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userSched
 Task _resyncTask(_resyncInterval, TASK_ONCE, &resync, &_userScheduler, false, NULL, NULL);
 Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, false, NULL, &snifferDisabled);
 //Task::Task(long unsigned int, int, void (*)(), Scheduler*, bool, void (*)(), void (*)())'
-Task _sendAlertTask(TASK_SECOND, 60, &sendAlert, &_userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
+Task _sendAlertTask(TASK_SECOND, 60, &sendAlert, &_userScheduler, false, NULL, &LaunchTasks);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 void channelHop()
@@ -386,17 +388,14 @@ void sendAlert()
 
 void initializeAlertMode()
 {
-        Serial.printf("SETTING ALERT MODE\n");
+        _resyncTask.disable();
         _snifferInitializationTask.disable();
         _channelHopTask.disable();
         _botInitializationTask.disable();
-        _resyncTask.disable();
 
+        Serial.printf("SETTING ALERT MODE\n");
         openMeshComm(false);
-        _sendAlertTask.enable();
-
-        //for post diable to resync to mesh so as to not get
-        _syncd  = true;
+        _sendAlertTask.restart();
 }
 
 bool botInitialization()
@@ -443,6 +442,9 @@ void meshInitialization(){
 
 void setup() {
   Serial.begin(115200);
+  //set mac here
+  //  uint8_t mac[] = {0x77, 0x01, 0x02, 0x03, 0x04, 0x05};
+  //wifi_set_macaddr(STATION_IF, &mac[0]);
     wifi_set_promiscuous_rx_cb(promisc_cb);
     // Serial.printf("promiscuos callback set\n");
 
@@ -559,5 +561,11 @@ void CalculateSyncAndLaunchTasks()
     _botInitializationTask.restartDelayed(syncDelay);
     _snifferInitializationTask.restartDelayed(syncDelay + _meshCommInterval);
     _channelHopTask.restartDelayed(syncDelay + _meshCommInterval);
+    _resyncTask.restartDelayed();
+}
+void LaunchTasks(){
+    _botInitializationTask.restartDelayed();
+    _snifferInitializationTask.restartDelayed(_meshCommInterval);
+    _channelHopTask.restartDelayed(_meshCommInterval);
     _resyncTask.restartDelayed();
 }

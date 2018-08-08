@@ -142,7 +142,7 @@ void receivedCallback( uint32_t from, String &msg ) {
           size_t foundTargetNodeId = root["found"];
           int channel = root["chan"];
           signed rssi = root["rssi"];
-          Serial.printf("[FOUND] %u FOUND TARGET | CHANNEL %i | RSSI %d \n", foundTargetNodeId, channel, rssi);
+          Serial.printf("[FOUND] %u | CHANNEL %i | RSSI %d \n", foundTargetNodeId, channel, rssi);
 
         if(std::find(_foundTargetNodeIds.begin(), _foundTargetNodeIds.end(), foundTargetNodeId) == _foundTargetNodeIds.end()) {
             _foundTargetNodeIds.push_back(foundTargetNodeId);

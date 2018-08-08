@@ -1,8 +1,7 @@
 #!/usr/bin/python
 
-import serial, subprocess, sys, getopt, re
-
-import sys
+import serial, subprocess, sys, getopt, re, aenum
+from aenum import Enum
 
 # ser = serial.Serial()
 # ser.baudrate = 115200
@@ -52,6 +51,17 @@ import sys
 
 # ser.close() # Only executes once the loop exits
 
+class Alias(Enum):
+    bob = 3943002768
+    Mickey = 3942906659
+    @classmethod
+    def sub(cls, line, escape):
+        # if escape:
+        aliasedLine = re.sub('\d{10}', lambda v: "\033[11;97m" + cls(int(v.group())).name + "\033[m", line)
+        # else:
+            # aliasedLine = re.sub('\d{10}', lambda v: "\033[11;97m" + cls(int(v.group())).name + "\033", line)
+        return aliasedLine
+
 def run_command(command):
     p = subprocess.Popen(command,
                          stdout=subprocess.PIPE,
@@ -62,9 +72,9 @@ def handle_c2_line(line):
     line_pieces = re.split(r'\s+',line)
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
         print('\x1b[6;30;42m' + 'SIGNAL COMM WILL GO HERE' + '\x1b[0m')
-        print('\x1b[6;30;42m' + line + '\x1b[0m')
+        print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
     elif line:
-        print(line)
+        print(Alias.sub(line,True))
 
 #
 #
@@ -88,7 +98,7 @@ def main(argv):
             serialPort = arg
             # elif opt in ("-o", "--ofile"):
             #     outputfile = arg
-    print 'Serial: "', serialPort
+    print 'Serial: ', serialPort
 
 
     try:
@@ -111,6 +121,16 @@ def main(argv):
         print "\nDied with honor."
         ser.close()
 
+# class Alias(Enum):
+#     _init_ = 'value text'
+#     bob = 12345, 'Bob'
+#     jon = 23456, 'Jon'
+#     jack = 34567, 'Jack'
+#     jill = 45678, 'Jill'
+#     steph = 89012, 'Steph'
+#     @classmethod
+#     def sub(cls, line):
+#         return re.sub('\d{5}', lambda v: cls(int(v.group())).text, line)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
