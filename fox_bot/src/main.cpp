@@ -64,6 +64,7 @@ bool _syncd = false;
 uint8_t _channelHopInterval = 400;
 bool _alertMode = false;
 signed _lastFoundRSSI = 0;
+int _lastFoundChannel = 0;
 
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     _userScheduler; // to control your personal task
@@ -335,6 +336,7 @@ void promisc_cb(uint8_t *buf, uint16_t len)
             _sendAlertTask.enable();
           }
           _lastFoundRSSI = beacon.rssi;
+          _lastFoundChannel = beacon.channel;
           // sendAlert(beacon);
           // nothing_new = 0;
         };
@@ -371,6 +373,7 @@ void sendAlert()
     JsonObject& msg = jsonBuffer.createObject();
     msg["found"] = _mesh.getNodeId();
     msg["rssi"] = _lastFoundRSSI;
+    msg["chan"] = _lastFoundChannel;
 
     String str;
     msg.printTo(str);
