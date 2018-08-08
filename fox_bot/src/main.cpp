@@ -74,7 +74,7 @@ Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userSched
 Task _resyncTask(_resyncInterval, TASK_ONCE, &resync, &_userScheduler, false, NULL, NULL);
 Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, false, NULL, &snifferDisabled);
 //Task::Task(long unsigned int, int, void (*)(), Scheduler*, bool, void (*)(), void (*)())'
-Task _sendAlertTask(TASK_SECOND, TASK_FOREVER, &sendAlert, &_userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
+Task _sendAlertTask(TASK_SECOND, 60, &sendAlert, &_userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 void channelHop()
@@ -333,7 +333,6 @@ void promisc_cb(uint8_t *buf, uint16_t len)
           {
               //We can thank the wonderful compiler for this hack, i.e. calling this function instead of properly setting the onEnable callback..
               initializeAlertMode();
-            _sendAlertTask.enable();
           }
           _lastFoundRSSI = beacon.rssi;
           _lastFoundChannel = beacon.channel;
@@ -387,8 +386,6 @@ void sendAlert()
 
 void initializeAlertMode()
 {
-    if (!_alertMode)
-    {
         Serial.printf("SETTING ALERT MODE\n");
         _snifferInitializationTask.disable();
         _channelHopTask.disable();
@@ -396,9 +393,10 @@ void initializeAlertMode()
         _resyncTask.disable();
 
         openMeshComm(false);
-        _syncd = true;
-        _alertMode = true;
-    }
+        _sendAlertTask.enable();
+
+        //for post diable to resync to mesh so as to not get
+        _syncd  = true;
 }
 
 bool botInitialization()
@@ -482,7 +480,7 @@ void receivedCallback( uint32_t from, String &msg ) {
   //
     DynamicJsonBuffer jsonBuffer;
     JsonObject& root = jsonBuffer.parseObject(msg);
-    if (_alertMode && root.containsKey("found_ack") ){
+    if (_sendAlertTask.isEnabled() && root.containsKey("found_ack") ){
         if (root["found_ack"] == _mesh.getNodeId())
         {
 
@@ -490,7 +488,6 @@ void receivedCallback( uint32_t from, String &msg ) {
             sendFinAck();
             //pull out of alerted state
             _sendAlertTask.disable();
-            _alertMode = false;
         }
     }
       Serial.printf("logClient: Handled from %u msg=%s\n", from, msg.c_str());

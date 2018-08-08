@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
-import serial, subprocess, sys, getopt, re, pydbus
-from pydbus import SystemBus
+import serial, subprocess, sys, getopt, re
 
 import sys
 
@@ -94,10 +93,13 @@ def main(argv):
 
     try:
         if mode == 1:
-            ser = serial.Serial(serialPort, 115200, timeout=.1)
-
+            ser = serial.Serial(serialPort, 115200, timeout=.2)
+            if ser.isOpen():
+                ser.close()
+            ser.open()
             while 1:
-                while ser.inWaiting():
+                bytesToRead = ser.inWaiting()
+                if bytesToRead:
                     handle_c2_line(ser.readline().rstrip())
 
         elif mode == 2:
@@ -106,7 +108,8 @@ def main(argv):
                 handle_c2_line(line)
 
     except KeyboardInterrupt:
-        print "Died with honor."
+        print "\nDied with honor."
+        ser.close()
 
 
 if __name__ == "__main__":
