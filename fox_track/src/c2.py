@@ -93,7 +93,7 @@ def main(argv):
 
     try:
         if mode == 1:
-            ser = serial.Serial(serialPort, 115200, timeout=.25)
+            ser = serial.Serial(serialPort, 115200, timeout=.2)
             if ser.isOpen():
                 ser.close()
             ser.open()
