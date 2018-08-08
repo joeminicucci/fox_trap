@@ -79,7 +79,7 @@ def handle_c2_line(line):
 #
 #
 def main(argv):
-    mode = 1
+    mode = 2
     serialPort = ''
     # outputfile = ''
     try:

@@ -17,6 +17,7 @@ extern "C"
 // #endif
 
 //set target here
+
 uint8_t _target[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 #define SENSOR_ID             0x00
@@ -413,9 +414,10 @@ void openMeshComm(bool restartSnifferDelayed){
     {
         _snifferInitializationTask.restartDelayed(_meshCommInterval);
         _channelHopTask.restartDelayed(_meshCommInterval);
+        _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
+
     }
 
-    _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
 }
 
 bool initializeSniffer(){
@@ -564,7 +566,7 @@ void CalculateSyncAndLaunchTasks()
     _resyncTask.restartDelayed();
 }
 void LaunchTasks(){
-    _botInitializationTask.restartDelayed();
+    // _botInitializationTask.restartDelayed();
     _snifferInitializationTask.restartDelayed(_meshCommInterval);
     _channelHopTask.restartDelayed(_meshCommInterval);
     _resyncTask.restartDelayed();
