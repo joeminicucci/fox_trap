@@ -18,7 +18,8 @@ extern "C"
 
 //set target here
 
-uint8_t _target[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+//FC:2D:5E:9B:3F:8F
+uint8_t _target[6] = { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F };
 
 #define SENSOR_ID             0x00
 #define DISABLE 0
@@ -68,6 +69,7 @@ uint8_t _channelHopInterval = 400;
 bool _alertMode = false;
 signed _lastFoundRSSI = 0;
 int _lastFoundChannel = 0;
+bool _fromSync = false;
 
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     _userScheduler; // to control your personal task
@@ -77,7 +79,7 @@ Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userSched
 Task _resyncTask(_resyncInterval, TASK_ONCE, &resync, &_userScheduler, false, NULL, NULL);
 Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, false, NULL, &snifferDisabled);
 //Task::Task(long unsigned int, int, void (*)(), Scheduler*, bool, void (*)(), void (*)())'
-Task _sendAlertTask(TASK_SECOND, 60, &sendAlert, &_userScheduler, false, NULL, &LaunchTasks);
+Task _sendAlertTask(TASK_SECOND, 60, &sendAlert, &_userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 void channelHop()
@@ -401,7 +403,13 @@ void initializeAlertMode()
 
 bool botInitialization()
 {
-    openMeshComm(true);
+    if (_fromSync)
+    {
+      openMeshComm(false);
+      _fromSync = false;
+    }
+    else
+      openMeshComm(true);
     // Serial.printf("BOT:botInitialization_END\n");
     return true;
 }
@@ -414,10 +422,8 @@ void openMeshComm(bool restartSnifferDelayed){
     {
         _snifferInitializationTask.restartDelayed(_meshCommInterval);
         _channelHopTask.restartDelayed(_meshCommInterval);
-        _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
-
+        // _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
     }
-
 }
 
 bool initializeSniffer(){
@@ -560,7 +566,10 @@ void CalculateSyncAndLaunchTasks()
         _userScheduler.addTask(_sendAlertTask);
     }
 
+    //TODO get rid of this non-sense
+    _fromSync = true;
     _botInitializationTask.restartDelayed(syncDelay);
+    // openMeshComm(false);
     _snifferInitializationTask.restartDelayed(syncDelay + _meshCommInterval);
     _channelHopTask.restartDelayed(syncDelay + _meshCommInterval);
     _resyncTask.restartDelayed();

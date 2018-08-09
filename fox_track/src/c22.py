@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import serial, subprocess, sys, argparse, re, aenum
+import serial, subprocess, sys, getopt, re, aenum, datetime
 from aenum import Enum
 
 # ser = serial.Serial()
@@ -52,8 +52,9 @@ from aenum import Enum
 # ser.close() # Only executes once the loop exits
 
 class Alias(Enum):
-    Donald_Duck = 3943002768
+    bob = 3943002768
     Mickey = 3942906659
+    Donald_Duck = 3943002779
     @classmethod
     def sub(cls, line, escape):
         # if escape:
@@ -62,24 +63,22 @@ class Alias(Enum):
             # aliasedLine = re.sub('\d{10}', lambda v: "\033[11;97m" + cls(int(v.group())).name + "\033", line)
         return aliasedLine
 
-def run_command(command):
-    p = subprocess.Popen(command,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT)
-    return iter(p.stdout.readline, b'')
-
 def run_signal_comm(signal_user_id, signal_group_id, found_message):
     p = subprocess.Popen('signal-cli -u %s send -m %s -g %s' % (signal_user_id, signal_group_id, found_message),
                          # shell=True
                          stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT)
 
+def run_command(command):
+    p = subprocess.Popen(command,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
+    return iter(p.stdout.readline, b'')
 
-def handle_c2_line(line, signalUserId, signalGroupId):
+def handle_c2_line(line):
     line_pieces = re.split(r'\s+',line)
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
-        # run_signal_comm(signalUserId,signalGroupId,line)
-        print('\x1b[6;30;42m' + line + '\x1b[0m')
+        print('\x1b[6;30;42m' + datetime.datetime.time(datetime.datetime.now()) + '\x1b[0m')
         print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
     elif line:
         print(Alias.sub(line,True))
@@ -87,40 +86,30 @@ def handle_c2_line(line, signalUserId, signalGroupId):
 #
 #
 def main(argv):
-    # mode = 1
-    # usage = 'c2.py -s <serialPort> -u <signalUserId> -g <signalGroupId>'
-
-    parser = argparse.ArgumentParser(description='Keep track of a sniffly mesh network and issue signal messages accordingly')
-    parser.add_argument('-s', "--serialPort",
-                        help='The serial port to monitor',
-                        required=True)
-    parser.add_argument('-u', '--signalUserId',
-                        help='The signal user id to send messages with',
-                        required=True)
-    parser.add_argument('-g','--signalGroupId',
-                        help='The signal group id to send messages to',
-                        required=True)
-    parser.add_argument('-m','--mode',
-                        help='The mode you would like to run in.\n mode 1 is via pyserial and mode 2 is via pio monitoring',
-                        required=True)
-
-    args = parser.parse_args()
-    # if '-s' in args || '--serialPort'
-    serialPort = args.serialPort
-    signalUserId = args.signalUserId
-    signalGroupId = args.signalGroupId
-    mode = args.mode
-
-    # print ("TESTING SIGNAL OUT: " + 'signal-cli -u %s -m %s -g %s' % (signalUserId, signalGroupId, 'gi'))
-
+    mode = 2
+    serialPort = ''
+    # outputfile = ''
+    try:
+        opts, args = getopt.getopt(argv, "hs:", ["serialPort="])
+    except getopt.GetoptError:
+        print 'test.py -s <serialPort>'
+        sys.exit(2)
+    if not argv:
+        print 'test.py -s <serialPort>'
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print 'test.py -s <serialPort>'
+            sys.exit()
+        elif opt in ("-s", "--serialPort"):
+            serialPort = arg
+            # elif opt in ("-o", "--ofile"):
+            #     outputfile = arg
     print 'Serial: ', serialPort
-    print 'signalUserId: ', signalUserId
-    print 'signalGroupId: ', signalGroupId
-    print 'mode: ', mode
+
 
     try:
-        if mode == '1':
-            print 'mode1'
+        if mode == 1:
             ser = serial.Serial(serialPort, 115200, timeout=.2)
             if ser.isOpen():
                 ser.close()
@@ -128,13 +117,12 @@ def main(argv):
             while 1:
                 bytesToRead = ser.inWaiting()
                 if bytesToRead:
-                    handle_c2_line(ser.readline().rstrip(), signalUserId, signalGroupId)
+                    handle_c2_line(ser.readline().rstrip())
 
-        elif mode == '2':
-            print 'mode2'
+        elif mode == 2:
             command = ("pio device monitor --port %s --baud 115200" % serialPort).split()
             for line in run_command(command):
-                handle_c2_line(line, signalUserId, signalGroupId)
+                handle_c2_line(line)
 
     except KeyboardInterrupt:
         print "\nDied with honor."
