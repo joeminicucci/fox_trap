@@ -63,7 +63,6 @@ int32_t _startTime = 0;
 uint32_t _meshCommInterval = 15000; //ms
 uint32_t _sniffInterval = 9000; //ms
 uint32_t _resyncInterval = 900000; //ms
-unsigned long _initDelay = 15000000;
 bool _syncd = false;
 uint8_t _channelHopInterval = 400;
 bool _alertMode = false;
@@ -424,6 +423,11 @@ void openMeshComm(bool restartSnifferDelayed){
         _channelHopTask.restartDelayed(_meshCommInterval);
         // _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
     }
+
+        // _mesh.Reset();
+        _mesh.~painlessMesh();
+        // _mesh = new painlessMesh::painlessMesh();
+        _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
 }
 
 bool initializeSniffer(){
