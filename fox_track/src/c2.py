@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import serial, subprocess, sys, argparse, re, aenum
+import serial, subprocess, sys, argparse, re, aenum, datetime
 from aenum import Enum
 
 # ser = serial.Serial()
@@ -54,6 +54,7 @@ from aenum import Enum
 class Alias(Enum):
     Donald_Duck = 3943002768
     Mickey = 3942906659
+    Carl = 3943002779
     @classmethod
     def sub(cls, line, escape):
         # if escape:
@@ -69,17 +70,21 @@ def run_command(command):
     return iter(p.stdout.readline, b'')
 
 def run_signal_comm(signal_user_id, signal_group_id, found_message):
-    p = subprocess.Popen('signal-cli -u %s send -m %s -g %s' % (signal_user_id, signal_group_id, found_message),
-                         # shell=True
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT)
+    print('SIGNAL COMMAND:', 'signal-cli -u %s send -m \"%s\" -g %s &' % (signal_user_id, found_message,signal_group_id))
+    command = 'signal-cli -u %s send -m \"%s\" -g %s &' % (signal_user_id, found_message,signal_group_id)
+    # p = subprocess.Popen(command,
+                         # shell=True,
+                         # stdout=subprocess.PIPE,
+                         # stderr=subprocess.STDOUT)
 
 
 def handle_c2_line(line, signalUserId, signalGroupId):
     line_pieces = re.split(r'\s+',line)
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
-        # run_signal_comm(signalUserId,signalGroupId,line)
-        print('\x1b[6;30;42m' + line + '\x1b[0m')
+        print("Begin signal comm")
+        run_signal_comm(signalUserId,signalGroupId,line)
+        print("End signal comm")
+        print('\x1b[6;30;42m' + str(datetime.datetime.time(datetime.datetime.now())) + '\x1b[0m')
         print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
     elif line:
         print(Alias.sub(line,True))
@@ -120,8 +125,7 @@ def main(argv):
 
     try:
         if mode == '1':
-            print 'mode1'
-            ser = serial.Serial(serialPort, 115200, timeout=.2)
+            ser = serial.Serial(serialPort, 115200, timeout=.25)
             if ser.isOpen():
                 ser.close()
             ser.open()
@@ -131,7 +135,6 @@ def main(argv):
                     handle_c2_line(ser.readline().rstrip(), signalUserId, signalGroupId)
 
         elif mode == '2':
-            print 'mode2'
             command = ("pio device monitor --port %s --baud 115200" % serialPort).split()
             for line in run_command(command):
                 handle_c2_line(line, signalUserId, signalGroupId)

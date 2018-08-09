@@ -64,10 +64,10 @@ class Alias(Enum):
         return aliasedLine
 
 def run_signal_comm(signal_user_id, signal_group_id, found_message):
-    p = subprocess.Popen('signal-cli -u %s send -m %s -g %s' % (signal_user_id, signal_group_id, found_message),
-                         # shell=True
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT)
+    p = subprocess.Popen('signal-cli -u %s send -m %s -g %s &' % (signal_user_id, signal_group_id, found_message),
+                         shell=True)
+                         # stdout=subprocess.PIPE,
+                         # stderr=subprocess.STDOUT)
 
 def run_command(command):
     p = subprocess.Popen(command,
@@ -78,8 +78,8 @@ def run_command(command):
 def handle_c2_line(line):
     line_pieces = re.split(r'\s+',line)
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
-        print('\x1b[6;30;42m' + datetime.datetime.time(datetime.datetime.now()) + '\x1b[0m')
-        print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
+        print('\x1b[6;30;42m' + str(datetime.datetime.time(datetime.datetime.now())) + '\x1b[0m')
+         print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
     elif line:
         print(Alias.sub(line,True))
 
