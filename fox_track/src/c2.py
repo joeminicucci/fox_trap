@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import serial, subprocess, sys, getopt, re
+import serial, subprocess, sys, argparse, re
 
 import sys
 
@@ -58,38 +58,54 @@ def run_command(command):
                          stderr=subprocess.STDOUT)
     return iter(p.stdout.readline, b'')
 
-def handle_c2_line(line):
+def run_signal_comm(signal_user_id, signal_group_id, found_message):
+    p = subprocess.Popen('signal-cli -u %s -m %s -g %s' % (signal_user_id, signal_group_id, found_message),
+                         # shell=True
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
+
+
+def handle_c2_line(line, signalUserId, signalGroupId):
     line_pieces = re.split(r'\s+',line)
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
-        print('\x1b[6;30;42m' + 'SIGNAL COMM WILL GO HERE' + '\x1b[0m')
+        # print('\x1b[6;30;42m' + 'SIGNAL COMM WILL GO HERE' + '\x1b[0m')
+        run_signal_comm(signalUserId,signalGroupId,line)
         print('\x1b[6;30;42m' + line + '\x1b[0m')
+        return True
     elif line:
         print(line)
 
 #
 #
 def main(argv):
-    mode = 1
-    serialPort = ''
-    # outputfile = ''
-    try:
-        opts, args = getopt.getopt(argv, "hs:", ["serialPort="])
-    except getopt.GetoptError:
-        print 'test.py -s <serialPort>'
-        sys.exit(2)
-    if not argv:
-        print 'test.py -s <serialPort>'
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print 'test.py -s <serialPort>'
-            sys.exit()
-        elif opt in ("-s", "--serialPort"):
-            serialPort = arg
-            # elif opt in ("-o", "--ofile"):
-            #     outputfile = arg
-    print 'Serial: "', serialPort
+    # mode = 1
+    # usage = 'c2.py -s <serialPort> -u <signalUserId> -g <signalGroupId>'
 
+    parser = argparse.ArgumentParser(description='Keep track of a sniffly mesh network and issue signal messages accordingly')
+    parser.add_argument('-s', "--serialPort",
+                        help='The serial port to monitor',
+                        required=True)
+    parser.add_argument('-u', '--signalUserId',
+                        help='The signal user id to send messages with',
+                        required=True)
+    parser.add_argument('-g','--signalGroupId',
+                        help='The signal group id to send messages to',
+                        required=True)
+    parser.add_argument('-m','--mode',
+                        help='The mode you would like to run in.\n mode 1 is via pyserial and mode 2 is via pio monitoring',
+                        required=True)
+
+    args = parser.parse_args()
+    # if '-s' in args || '--serialPort'
+    serialPort = args.serialPort
+    signalUserId = args.signalUserId
+    signalGroupId = args.signalGroupId
+    mode = args.mode
+    print ("TESTING SIGNAL OUT: " + 'signal-cli -u %s -m %s -g %s' % (signalUserId, signalGroupId, 'gi'))
+
+    print 'Serial: ', serialPort
+    print 'signalUserId: ', signalUserId
+    print 'signalGroupId: ', signalGroupId
 
     try:
         if mode == 1:
@@ -105,7 +121,7 @@ def main(argv):
         elif mode == 2:
             command = ("pio device monitor --port %s --baud 115200" % serialPort).split()
             for line in run_command(command):
-                handle_c2_line(line)
+                handle_c2_line(line,signalUserId,signalGroupId)
 
     except KeyboardInterrupt:
         print "\nDied with honor."
