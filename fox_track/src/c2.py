@@ -52,7 +52,7 @@ from aenum import Enum
 # ser.close() # Only executes once the loop exits
 
 class Alias(Enum):
-    
+
     Donald_Duck = 10607203
     Mickey = 261400
     Carl = 357003
@@ -62,6 +62,9 @@ class Alias(Enum):
     TRex = 357031
     Popeye = 10607966
     Minnie = 3943002751
+    Belle = 10607198
+    # Ariel =
+    # Stitch
 
     @classmethod
     def sub(cls, line, escape):
