@@ -115,7 +115,8 @@ def handle_c2_line(line, signalUserId, signalGroupId):
         #     print(line2)
 
     elif line:
-        print(Alias.sub(line,True))
+        print (line)
+        # print(Alias.sub(line,True))
 
 #
 #
