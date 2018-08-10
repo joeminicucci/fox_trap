@@ -3,3 +3,5 @@
 .clang_complete
 .gcc-flags.json
 firmware.elf
+Channel.txt
+Mac.txt
