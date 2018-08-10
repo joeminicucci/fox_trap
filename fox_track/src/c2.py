@@ -61,6 +61,7 @@ class Alias(Enum):
     Baloo = 6702602
     TRex = 357031
     Popeye = 10607966
+    Minnie = 3943002751
 
     @classmethod
     def sub(cls, line, escape):

@@ -10,7 +10,7 @@ extern "C"
 
 #include <painlessMesh.h>
 #include <cstdint>
-#include <structures.h>
+#include "structures.h"
 // #ifndef SNIFFING_H
 // #define SNIFFING_H
 #include "sniffing.h"
@@ -40,6 +40,31 @@ std::vector<std::array<uint8_t, 6> > _targets =
 // #define RX_PER_CHANNEL_HOP 3
 #define RX_COMM_INTERVAL 10000
 
+
+// struct clientinfo
+// {
+//   uint8_t bssid[ETH_MAC_LEN];
+//   uint8_t station[ETH_MAC_LEN];
+//   uint8_t ap[ETH_MAC_LEN];
+//   int channel;
+//   int err;
+//   signed rssi;
+//   uint16_t seq_n;
+// /* rpw additions */
+//   uint8_t header;
+//   uint32_t last_heard;
+//   uint8_t reported;
+// };
+
+// struct clientinfo {
+//   uint8_t beacon[ETH_MAC_LEN];
+//   uint8_t station[ETH_MAC_LEN];
+//   uint8_t rssi;
+//   uint16_t seq;
+//   bool err;
+// };
+//
+
 //mesh members...NO_OBJECTS == NO_HOPE
 bool botInitialization();
 bool initializeSniffer();
@@ -59,6 +84,9 @@ void initializeAlertMode();
 void openMeshComm(bool restartSnifferDelayed = false);
 void LaunchTasks();
 void getMAC(char *addr, uint8_t* data);
+struct clientinfo parse_probe(uint8_t *frame, uint16_t framelen, signed rssi, unsigned channel);
+int register_probe(clientinfo probe);
+void print_probe(clientinfo ci);
 
 void getMAC(char *addr, uint8_t* data) {
   sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[0], data[1], data[2], data[3], data[4], data[5]);
@@ -191,6 +219,32 @@ int register_beacon(beaconinfo beacon)
   // }
   return known;
 }
+int register_probe(clientinfo probe)
+{
+  // // add beacon to list if not already included
+  int known = 0;   // Clear known flag
+
+    for (const auto& target : _targets)
+    {
+      if (! memcmp(target.data(), probe.station, 6)) {
+        known = 1;
+      }
+    }
+  // }
+  // if (! known)  // AP is NEW, copy MAC to array and return it
+  // {
+  //   memcpy(&aps_known[aps_known_count], &beacon, sizeof(beacon));
+  //   aps_known_count++;
+  //
+  //   if ((unsigned int) aps_known_count >=
+  //       sizeof (aps_known) / sizeof (aps_known[0]) ) {
+  //     Serial.printf("exceeded max aps_known\n");
+  //     aps_known_count = 0;
+  //   }
+  // }
+  return known;
+}
+
 void print_pkt_header(uint8_t *buf, uint16_t len, char *pkt_type)
 {
   char ssid_name[33];
@@ -344,7 +398,7 @@ void promisc_cb(uint8_t *buf, uint16_t len)
         if (register_beacon(beacon) == 1)
         {
 
-            Serial.printf("TARGET ");
+            Serial.printf("TARGET BEACON");
           print_beacon(beacon);
           if (!_sendAlertTask.isEnabled())
           {
@@ -361,15 +415,30 @@ void promisc_cb(uint8_t *buf, uint16_t len)
           // nothing_new = 0;
         };
       }
-      // else if (frame_type ==0 && frame_subtype==4)
-      // {
-      //   struct probeinfo probe = parse_probe(sniffer->buf, 112, sniffer->rx_ctrl.rssi);
-      //   if (register_probe(probe) == 0)
-      //   {
-      //     print_probe(probe);
-      //     nothing_new = 0;
-      //   };
-      // }
+      else
+      {
+        struct sniffer_buf *sniffer = (struct sniffer_buf*) buf;
+        struct clientinfo probe = parse_probe(sniffer->buf, 36, sniffer->rx_ctrl.rssi, sniffer->rx_ctrl.channel);
+            // getMAC(lastFoundMac, probe.station);
+          // Serial.printf("PROBE FROM : %s", lastFoundMac);
+
+        if (register_probe(probe) == 1)
+        {
+          Serial.printf("TARGET PROBE");
+          print_probe(probe);
+
+
+        if (!_sendAlertTask.isEnabled())
+        {
+            //We can thank the wonderful compiler for this hack, i.e. calling this function instead of properly setting the onEnable callback..
+            initializeAlertMode();
+        }
+        lastFoundRSSI = probe.rssi;
+        lastFoundChannel = probe.channel;
+        // memcpy(lastFoundMac, beacon.bssid,ETH_MAC_LEN);
+        getMAC(lastFoundMac, probe.station);
+      }
+    }
       // else
       // {
       //   print_pkt_header(buf,112,"UKNOWN:");
@@ -384,6 +453,80 @@ void promisc_cb(uint8_t *buf, uint16_t len)
     //   nothing_new = 0;
     // }
   // }
+}
+
+
+/*
+ * Function that parses client information from packet
+ */
+struct clientinfo parse_probe(uint8_t *frame, uint16_t framelen, signed rssi, unsigned channel)
+{
+  struct clientinfo ci;
+  ci.channel = channel;
+  ci.err = 0;
+  ci.rssi = rssi;
+  int pos = 36;
+  uint8_t *bssid;
+  uint8_t *station;
+  uint8_t *ap;
+  uint8_t ds;
+
+  ds = frame[1] & 3;    //Set first 6 bits to 0
+  switch (ds) {
+    // p[1] - xxxx xx00 => NoDS   p[4]-DST p[10]-SRC p[16]-BSS
+    case 0:
+      bssid = frame + 16;
+      station = frame + 10;
+      ap = frame + 4;
+      break;
+    // p[1] - xxxx xx01 => ToDS   p[4]-BSS p[10]-SRC p[16]-DST
+    case 1:
+      bssid = frame + 4;
+      station = frame + 10;
+      ap = frame + 16;
+      break;
+    // p[1] - xxxx xx10 => FromDS p[4]-DST p[10]-BSS p[16]-SRC
+    case 2:
+      bssid = frame + 10;
+      // hack - don't know why it works like this...
+      if (memcmp(frame + 4, broadcast1, 3) || memcmp(frame + 4, broadcast2, 3) || memcmp(frame + 4, broadcast3, 3)) {
+        station = frame + 16;
+        ap = frame + 4;
+      } else {
+        station = frame + 4;
+        ap = frame + 16;
+      }
+      break;
+    // p[1] - xxxx xx11 => WDS    p[4]-RCV p[10]-TRM p[16]-DST p[26]-SRC
+    case 3:
+      bssid = frame + 10;
+      station = frame + 4;
+      ap = frame + 4;
+      break;
+  }
+
+  memcpy(ci.station, station, ETH_MAC_LEN);
+  memcpy(ci.bssid, bssid, ETH_MAC_LEN);
+  memcpy(ci.ap, ap, ETH_MAC_LEN);
+
+  ci.seq_n = frame[23] * 0xFF + (frame[22] & 0xF0);
+  return ci;
+}
+
+
+
+void print_probe(clientinfo ci) {
+  Serial.print("\"");
+  for (int i = 0; i < ETH_MAC_LEN; i++) {
+    if (i > 0) Serial.print(":");
+    Serial.printf("%02x", ci.station[i]);
+  }
+  Serial.print("\":{\"beacon\":\"");
+  for (int i = 0; i < ETH_MAC_LEN; i++) {
+    if (i > 0) Serial.print(":");
+    Serial.printf("%02x", ci.bssid[i]);
+  }
+  Serial.printf("\",\"rssi\":-%d}", ci.rssi);
 }
 
 void sendAlert()
