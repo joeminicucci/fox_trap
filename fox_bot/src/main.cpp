@@ -18,11 +18,14 @@ extern "C"
 
 //set target here
 
-//FC:2D:5E:9B:3F:8F
-// uint8_t _target[6] = { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F };
 std::vector<std::array<uint8_t, 6> > _targets =
         {
-          { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F }
+          { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F },
+          { 0xD2, 0xE4, 0x0B, 0xEA, 0xC8, 0x61 }, // Wifi Fox
+          { 0x00, 0xC0, 0xCA, 0x24, 0x85, 0x4E }, // Hide and Seek
+          { 0xD2, 0XE4, 0X0B, 0XF5, 0X10, 0X9C }, //WPA
+          { 0XB8, 0X27, 0XEB, 0XFB, 0X3D, 0XC1 }, //CLIENT
+          { 0XC8, 0XB5, 0XAD, 0XFF, 0X56, 0XB9 }
         };
 
 
@@ -32,8 +35,8 @@ std::vector<std::array<uint8_t, 6> > _targets =
 #define TIME_PRECISION_MS = 10
 
 //Wifi Configuration
-#define   MESH_PREFIX     "dc719"
-#define   MESH_PASSWORD   "whatdoesthefoxsay?"
+#define   MESH_PREFIX     "Caesars_Lobby"
+#define   MESH_PASSWORD   "whatdoesthefoxsay?!gofuckyourself"
 #define   MESH_PORT       5566
 
 //Scheduling Intervals
