@@ -55,6 +55,7 @@ class Alias(Enum):
     Donald_Duck = 3943002768
     Mickey = 3942906659
     Carl = 3943002779
+    Hawk_Eye = 3943002751
     @classmethod
     def sub(cls, line, escape):
         # if escape:
