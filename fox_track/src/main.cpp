@@ -13,7 +13,7 @@ unsigned long _initDelay = 15000000;
 uint32_t _acknowledgementInterval = 900000; //ms
 // size_t _foundTargetNodeId = 0;
 std::vector<size_t> _foundTargetNodeIds;
-
+const char* _mac;
 
 
 void receivedCallback( uint32_t from, String &msg );
@@ -23,6 +23,7 @@ void disableAck();
 //Async functions
 Task _rootInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &rootInitialization, &_userScheduler);
 Task _acknowledgementTask(TASK_SECOND * 3, 20, &acknowledgeTargets, &_userScheduler, false, NULL, &disableAck);
+
 
 void acknowledgeTargets(){
 
@@ -142,7 +143,8 @@ void receivedCallback( uint32_t from, String &msg ) {
           size_t foundTargetNodeId = root["found"];
           int channel = root["chan"];
           signed rssi = root["rssi"];
-          Serial.printf("[FOUND] %u | CHANNEL %i | RSSI %d \n", foundTargetNodeId, channel, rssi);
+          _mac = root["mac"];
+          Serial.printf("[FOUND] %u | %s | %i | %d \n", foundTargetNodeId, _mac, channel, rssi);
 
         if(std::find(_foundTargetNodeIds.begin(), _foundTargetNodeIds.end(), foundTargetNodeId) == _foundTargetNodeIds.end()) {
             _foundTargetNodeIds.push_back(foundTargetNodeId);

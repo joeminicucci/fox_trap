@@ -58,6 +58,12 @@ void sendFinAck();
 void initializeAlertMode();
 void openMeshComm(bool restartSnifferDelayed = false);
 void LaunchTasks();
+void getMAC(char *addr, uint8_t* data);
+
+void getMAC(char *addr, uint8_t* data) {
+  sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[0], data[1], data[2], data[3], data[4], data[5]);
+}
+
 
 
 // Prototype
@@ -74,6 +80,8 @@ uint8_t _channelHopInterval = 400;
 bool _alertMode = false;
 signed _lastFoundRSSI = 0;
 int _lastFoundChannel = 0;
+// uint8_t _lastFoundMac[6] = {};
+char _lastFoundMac[] = "00:00:00:00:00:00";
 bool _fromSync = false;
 
 // void receivedCallback( uint31_t from, String &msg );
@@ -346,6 +354,10 @@ void promisc_cb(uint8_t *buf, uint16_t len)
           }
           _lastFoundRSSI = beacon.rssi;
           _lastFoundChannel = beacon.channel;
+          // memcpy(_lastFoundMac, beacon.bssid,ETH_MAC_LEN);
+            getMAC(_lastFoundMac, beacon.bssid);
+
+
           // sendAlert(beacon);
           // nothing_new = 0;
         };
@@ -375,7 +387,6 @@ void promisc_cb(uint8_t *buf, uint16_t len)
   // }
 }
 
-
 void sendAlert()
 {
     DynamicJsonBuffer jsonBuffer;
@@ -383,6 +394,7 @@ void sendAlert()
     msg["found"] = _mesh.getNodeId();
     msg["rssi"] = _lastFoundRSSI;
     msg["chan"] = _lastFoundChannel;
+    msg["mac"] = _lastFoundMac;
 
     String str;
     msg.printTo(str);
@@ -436,9 +448,11 @@ bool initializeSniffer(){
     // _mesh.stop();
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(ENABLE);
-    Serial.printf("promiscuos enable\n");
+
     return true;
 }
+
+
 
 void meshInitialization(){
     //keep the topology from fucking itself
