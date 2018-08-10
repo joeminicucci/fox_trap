@@ -5,15 +5,15 @@
 #define   MESH_PORT       5566
 
 // Prototype
-Scheduler     _userScheduler; // to control your personal task
-painlessMesh  _mesh;
-uint16_t _channel = 6;
-int32_t _maxRttDelay = 0;
-unsigned long _initDelay = 15000000;
-uint32_t _acknowledgementInterval = 900000; //ms
+Scheduler     userScheduler; // to control your personal task
+painlessMesh  mesh;
+uint16_t channel = 6;
+int32_t maxRttDelay = 0;
+unsigned long initDelay = 15000000;
+uint32_t acknowledgementInterval = 900000; //ms
 // size_t _foundTargetNodeId = 0;
-std::vector<size_t> _foundTargetNodeIds;
-const char* _mac;
+std::vector<long> _foundTargetNodeIds;
+const char* mac;
 
 
 void receivedCallback( uint32_t from, String &msg );
@@ -21,8 +21,8 @@ void rootInitialization();
 void acknowledgeTargets();
 void disableAck();
 //Async functions
-Task _rootInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &rootInitialization, &_userScheduler);
-Task _acknowledgementTask(TASK_SECOND * 3, 20, &acknowledgeTargets, &_userScheduler, false, NULL, &disableAck);
+Task _rootInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &rootInitialization, &userScheduler);
+Task acknowledgementTask(TASK_SECOND * 3, 20, &acknowledgeTargets, &userScheduler, false, NULL, &disableAck);
 
 
 void acknowledgeTargets(){
@@ -34,12 +34,12 @@ void acknowledgeTargets(){
         JsonObject& msg = jsonBuffer.createObject();
         for (auto nodeId : _foundTargetNodeIds) // access by reference to avoid copying
         {
-            msg["found_ack"] = nodeId;
+            msg["foundack"] = nodeId;
             String str;
             msg.printTo(str);
             msg.printTo(Serial);
             Serial.printf("\n");
-            _mesh.sendBroadcast(str);
+            mesh.sendBroadcast(str);
         }
     }
 
@@ -55,12 +55,12 @@ void sendInitializationSignal()
     DynamicJsonBuffer jsonBuffer;
     JsonObject& msg = jsonBuffer.createObject();
     // msg["topic"] = "initialize";
-    //we're hoping to god the signed _maxRTTDelay is not negative for some reason
-    msg["initialize"] = (_maxRttDelay*2) + _mesh.getNodeTime();
+    //we're hoping to god the signed maxRttDelay is not negative for some reason
+    msg["initialize"] = (maxRttDelay*2) + mesh.getNodeTime();
 
     String str;
     msg.printTo(str);
-    _mesh.sendBroadcast(str);
+    mesh.sendBroadcast(str);
 
     // log to serial
     Serial.printf("c2 initialization sent: ");
@@ -71,16 +71,16 @@ void sendInitializationSignal()
 void newConnectionCallback(uint32_t nodeId) {
     Serial.printf("New Connection %u\n", nodeId);
     //calls to onNodeDelayReceived
-    // _mesh.startDelayMeas(nodeId);
+    // mesh.startDelayMeas(nodeId);
 
 }
 
 void onNodeDelayReceivedCallback(uint32_t nodeId, int32_t delay)
 {
     Serial.printf("ROOT:onNodeDelayReceivedCallback: %u, %i\n", nodeId, delay);
-    _maxRttDelay = (delay > _maxRttDelay)
+    maxRttDelay = (delay > maxRttDelay)
         ? delay
-        : _maxRttDelay;
+        : maxRttDelay;
 }
 
 void rootInitialization(){
@@ -88,26 +88,26 @@ void rootInitialization(){
     //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE | DEBUG ); // all types on
     //mesh.setDebugMsgTypes( ERROR | CONNECTION | SYNC | S_TIME );  // set before init() so that you can see startup messages
 
-    // _mesh.setDebugMsgTypes(SYNC | CONNECTION | MESH_STATUS | COMMUNICATION);  // set before init() so that you can see startup messages
+    // mesh.setDebugMsgTypes(SYNC | CONNECTION | MESH_STATUS | COMMUNICATION);  // set before init() so that you can see startup messages
 
-    _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP, _channel);
-    _mesh.onReceive(&receivedCallback);
+    mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP, channel);
+    mesh.onReceive(&receivedCallback);
     //keep the topology from fucking itself
-    _mesh.setRoot(true);
+    mesh.setRoot(true);
     // This and all other mesh should ideally now the mesh contains a root
-    _mesh.setContainsRoot(true);
+    mesh.setContainsRoot(true);
 
-    // _mesh.onNodeDelayReceived(&onNodeDelayReceivedCallback);
-    _mesh.onNewConnection(&newConnectionCallback);
+    // mesh.onNodeDelayReceived(&onNodeDelayReceivedCallback);
+    mesh.onNewConnection(&newConnectionCallback);
 
   //rid of inlines and push to prototype object oriented structure later..be a lazy piece of shit for now..
-    _mesh.onDroppedConnection([](size_t nodeId) {
+    mesh.onDroppedConnection([](size_t nodeId) {
         Serial.printf("Dropped Connection %u\n", nodeId);
 
     });
 
     //Wait for a specified amount of time to gather all RTTs from bots..not a brillaint design decision
-    // _rootInitializationTask.delay(_initDelay);
+    // _rootInitializationTask.delay(initDelay);
 
     // sendInitializationSignal();
     Serial.printf("ROOT:rootInitialization_END");
@@ -119,17 +119,17 @@ void rootInitialization(){
 
 void setup() {
   Serial.begin(115200);
-  // _userScheduler.addTask(logServerTask);
-  _userScheduler.addTask(_rootInitializationTask);
-  // _userScheduler.addTask(logServerTask);
-  _userScheduler.addTask(_acknowledgementTask);
+  // userScheduler.addTask(logServerTask);
+  userScheduler.addTask(_rootInitializationTask);
+  // userScheduler.addTask(logServerTask);
+  userScheduler.addTask(acknowledgementTask);
     _rootInitializationTask.enable();
     // logServerTask.enable();
 }
 
 void loop() {
-  _userScheduler.execute(); // it will run _mesh scheduler as well
-  _mesh.update();
+  userScheduler.execute(); // it will run mesh scheduler as well
+  mesh.update();
 }
 
 void receivedCallback( uint32_t from, String &msg ) {
@@ -140,11 +140,11 @@ void receivedCallback( uint32_t from, String &msg ) {
       // if (String("logServer").equals(root["topic"].as<String>())) {
           // check for on: true or false
           // _foundTargetNodeId = root["found"];
-          size_t foundTargetNodeId = root["found"];
+          long foundTargetNodeId = root["found"];
           int channel = root["chan"];
           signed rssi = root["rssi"];
-          _mac = root["mac"];
-          Serial.printf("[FOUND] %u | %s | %i | %d \n", foundTargetNodeId, _mac, channel, rssi);
+          mac = root["mac"];
+          Serial.printf("[FOUND] %d | %s | %i | %d \n", foundTargetNodeId, mac, channel, rssi);
 
         if(std::find(_foundTargetNodeIds.begin(), _foundTargetNodeIds.end(), foundTargetNodeId) == _foundTargetNodeIds.end()) {
             _foundTargetNodeIds.push_back(foundTargetNodeId);
@@ -153,8 +153,8 @@ void receivedCallback( uint32_t from, String &msg ) {
         }
 
         //checks if it is diabled and re-enables it. if it is out of iterations AND disabled, restart
-        if( !_acknowledgementTask.enableIfNot()){
-            _acknowledgementTask.restart();
+        if( !acknowledgementTask.enableIfNot()){
+            acknowledgementTask.restart();
         }
   }
   if (root.containsKey("fin_ack")){

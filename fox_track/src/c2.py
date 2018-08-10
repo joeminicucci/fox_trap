@@ -55,7 +55,8 @@ class Alias(Enum):
     Donald_Duck = 3943002768
     Mickey = 3942906659
     Carl = 3943002779
-    Hawk_Eye = 3943002751
+    Hawk_Eye = 394300275
+    Goofy = 3943002751
     @classmethod
     def sub(cls, line, escape):
         # if escape:
@@ -80,11 +81,21 @@ def run_signal_comm(signal_user_id, signal_group_id, found_message):
 
 
 def handle_c2_line(line, signalUserId, signalGroupId):
-    line_pieces = re.split(r'\s+',line)
+    # line_pieces = re.split(r'\s+',line)
+    line_pieces = line.split('|')
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
         print("Begin signal comm")
         run_signal_comm(signalUserId,signalGroupId,line)
         print("End signal comm")
+        # newstuff = stuff.replace(" ","")
+        mac = line_pieces[1].strip()
+        channel = line_pieces[2].strip()
+
+        with open("Mac.txt","w") as text_file:
+            text_file.write(mac)
+        with open("Channel.txt","w") as text_file:
+            text_file.write(channel)
+
         print('\x1b[6;30;42m' + str(datetime.datetime.time(datetime.datetime.now())) + '\x1b[0m')
         print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
     elif line:

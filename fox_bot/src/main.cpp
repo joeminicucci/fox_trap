@@ -67,32 +67,31 @@ void getMAC(char *addr, uint8_t* data) {
 
 
 // Prototype
-uint16_t _channel = 6;
+uint16_t channel = 6;
 // uint16_t _channelCount = 1;
-size_t logServerId = 0;
-int32_t _startTime = 0;
-uint32_t _meshCommInterval = 15000; //ms
-uint32_t _sniffInterval = 9000; //ms
-uint32_t _resyncInterval = 900000; //ms
+// long logServerId = 0;
+uint32_t meshCommInterval = 20000; //ms
+uint32_t sniffInterval = 9000; //ms
+uint32_t resyncInterval = 900000; //ms
 unsigned long _initDelay = 15000000;
-bool _syncd = false;
-uint8_t _channelHopInterval = 400;
+bool syncd = false;
+uint8_t channelHopInterval = 400;
 bool _alertMode = false;
-signed _lastFoundRSSI = 0;
-int _lastFoundChannel = 0;
-// uint8_t _lastFoundMac[6] = {};
-char _lastFoundMac[] = "00:00:00:00:00:00";
-bool _fromSync = false;
+signed lastFoundRSSI = 0;
+int lastFoundChannel = 0;
+// uint8_t lastFoundMac[6] = {};
+char lastFoundMac[] = "00:00:00:00:00:00";
+bool fromSync = false;
 
 // void receivedCallback( uint31_t from, String &msg );
-Scheduler     _userScheduler; // to control your personal task
-painlessMesh  _mesh;
-Task _botInitializationTask(_meshCommInterval, TASK_ONCE, &botInitialization, &_userScheduler, false, NULL, &meshDisabled);
-Task _channelHopTask(_channelHopInterval, TASK_FOREVER, &channelHop, &_userScheduler, false, NULL, NULL);
-Task _resyncTask(_resyncInterval, TASK_ONCE, &resync, &_userScheduler, false, NULL, NULL);
-Task _snifferInitializationTask(_sniffInterval, TASK_ONCE, &initializeSniffer, &_userScheduler, false, NULL, &snifferDisabled);
+Scheduler     userScheduler; // to control your personal task
+painlessMesh  mesh;
+Task _botInitializationTask(meshCommInterval, TASK_ONCE, &botInitialization, &userScheduler, false, NULL, &meshDisabled);
+Task channelHopTask(channelHopInterval, TASK_FOREVER, &channelHop, &userScheduler, false, NULL, NULL);
+Task resyncTask(resyncInterval, TASK_ONCE, &resync, &userScheduler, false, NULL, NULL);
+Task snifferInitializationTask(sniffInterval, TASK_ONCE, &initializeSniffer, &userScheduler, false, NULL, &snifferDisabled);
 //Task::Task(long unsigned int, int, void (*)(), Scheduler*, bool, void (*)(), void (*)())'
-Task _sendAlertTask(TASK_SECOND, 60, &sendAlert, &_userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
+Task _sendAlertTask(TASK_SECOND * 2, 60, &sendAlert, &userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
 void channelHop()
@@ -108,8 +107,8 @@ void channelHop()
 
 void resync()
 {
-    _syncd = false;
-    _resyncTask.restartDelayed();
+    syncd = false;
+    resyncTask.restartDelayed();
 }
 //*************** DEMARC SNIFFER ***************/
 struct beaconinfo parse_beacon(uint8_t *frame, uint16_t framelen, signed rssi)
@@ -352,10 +351,10 @@ void promisc_cb(uint8_t *buf, uint16_t len)
               //We can thank the wonderful compiler for this hack, i.e. calling this function instead of properly setting the onEnable callback..
               initializeAlertMode();
           }
-          _lastFoundRSSI = beacon.rssi;
-          _lastFoundChannel = beacon.channel;
-          // memcpy(_lastFoundMac, beacon.bssid,ETH_MAC_LEN);
-            getMAC(_lastFoundMac, beacon.bssid);
+          lastFoundRSSI = beacon.rssi;
+          lastFoundChannel = beacon.channel;
+          // memcpy(lastFoundMac, beacon.bssid,ETH_MAC_LEN);
+            getMAC(lastFoundMac, beacon.bssid);
 
 
           // sendAlert(beacon);
@@ -391,14 +390,14 @@ void sendAlert()
 {
     DynamicJsonBuffer jsonBuffer;
     JsonObject& msg = jsonBuffer.createObject();
-    msg["found"] = _mesh.getNodeId();
-    msg["rssi"] = _lastFoundRSSI;
-    msg["chan"] = _lastFoundChannel;
-    msg["mac"] = _lastFoundMac;
+    msg["found"] = ESP.getChipId();
+    msg["rssi"] = lastFoundRSSI;
+    msg["chan"] = lastFoundChannel;
+    msg["mac"] = lastFoundMac;
 
     String str;
     msg.printTo(str);
-    _mesh.sendBroadcast(str);
+    mesh.sendBroadcast(str);
 
     // log to serial
     msg.printTo(Serial);
@@ -408,9 +407,9 @@ void sendAlert()
 
 void initializeAlertMode()
 {
-        _resyncTask.disable();
-        _snifferInitializationTask.disable();
-        _channelHopTask.disable();
+        resyncTask.disable();
+        snifferInitializationTask.disable();
+        channelHopTask.disable();
         _botInitializationTask.disable();
 
         Serial.printf("SETTING ALERT MODE\n");
@@ -420,10 +419,10 @@ void initializeAlertMode()
 
 bool botInitialization()
 {
-    if (_fromSync)
+    if (fromSync)
     {
       openMeshComm(false);
-      _fromSync = false;
+      fromSync = false;
     }
     else
       openMeshComm(true);
@@ -437,15 +436,15 @@ void openMeshComm(bool restartSnifferDelayed){
 
     if (restartSnifferDelayed)
     {
-        _snifferInitializationTask.restartDelayed(_meshCommInterval);
-        _channelHopTask.restartDelayed(_meshCommInterval);
-        // _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
+        snifferInitializationTask.restartDelayed(meshCommInterval);
+        channelHopTask.restartDelayed(meshCommInterval);
+        // mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
     }
 }
 
 bool initializeSniffer(){
-    _botInitializationTask.restartDelayed(_sniffInterval);
-    // _mesh.stop();
+    _botInitializationTask.restartDelayed(sniffInterval);
+    // mesh.stop();
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(ENABLE);
 
@@ -456,15 +455,15 @@ bool initializeSniffer(){
 
 void meshInitialization(){
     //keep the topology from fucking itself
-    _mesh.setRoot(false);
+    mesh.setRoot(false);
     // This and all other mesh should ideally now the mesh contains a root
-    _mesh.setContainsRoot(true);
-    _mesh.onReceive(&receivedCallback);
-    _mesh.onNodeTimeAdjusted(&onTimeAdjusted);
-    // _mesh.setDebugMsgTypes(SYNC | CONNECTION);  // set before init() so that you can see startup messages
+    mesh.setContainsRoot(true);
+    mesh.onReceive(&receivedCallback);
+    mesh.onNodeTimeAdjusted(&onTimeAdjusted);
+    // mesh.setDebugMsgTypes(SYNC | CONNECTION);  // set before init() so that you can see startup messages
     //neeed to connect to the mesh once to get NTP sync
 
-    _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
+    mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, channel);
 }
 
 void setup() {
@@ -481,8 +480,8 @@ void setup() {
 }
 
 void loop() {
-    _userScheduler.execute(); // it will run _mesh scheduler as well
-    _mesh.update();
+    userScheduler.execute(); // it will run mesh scheduler as well
+    mesh.update();
 }
 
 void meshDisabled(){
@@ -509,8 +508,8 @@ void receivedCallback( uint32_t from, String &msg ) {
   //
     DynamicJsonBuffer jsonBuffer;
     JsonObject& root = jsonBuffer.parseObject(msg);
-    if (_sendAlertTask.isEnabled() && root.containsKey("found_ack") ){
-        if (root["found_ack"] == _mesh.getNodeId())
+    if (_sendAlertTask.isEnabled() && root.containsKey("foundack") ){
+        if (root["foundack"] == ESP.getChipId())
         {
 
             //try a one ditch effort to get the server to stfu. could make this a multi-ditch effort, but dont want to burn alot of cycles
@@ -525,22 +524,22 @@ void receivedCallback( uint32_t from, String &msg ) {
 void sendFinAck(){
     DynamicJsonBuffer jsonBuffer;
     JsonObject& msg = jsonBuffer.createObject();
-    msg["fin_ack"] = _mesh.getNodeId();
+    msg["fin_ack"] = ESP.getChipId();
     String str;
     msg.printTo(str);
-    _mesh.sendBroadcast(str);
+    mesh.sendBroadcast(str);
     msg.printTo(Serial);
     Serial.printf("\n");
 }
 uint32_t CalculateSynchronizationDelay(){
-  uint32_t current = _mesh.getNodeTime();
+  uint32_t current = mesh.getNodeTime();
 
   //offset current time from the target interval
   //pulling by 1ms
   Serial.printf("current time is: %i microS\n",current);
   current = current / 1000;
 
-uint32_t precision  = (_meshCommInterval + _sniffInterval);
+uint32_t precision  = (meshCommInterval + sniffInterval);
   //get the next closest interval to synchronize with the mesh
   uint32_t nextThreshold = roundUp(current, precision);
   Serial.printf("current time is: %i mS\n",current);
@@ -563,9 +562,9 @@ uint32_t roundUp(uint32_t numToRound, uint32_t multiple)
 }
 
 void onTimeAdjusted(int32_t offset){
-    Serial.printf("SNTP GOOD WITH CURRENT_TIME=: %u\t DELTA: %u\n", _mesh.getNodeTime(), offset);
-    if(!_syncd){
-        _syncd = true;
+    Serial.printf("SNTP GOOD WITH CURRENT_TIME=: %u\t DELTA: %u\n", mesh.getNodeTime(), offset);
+    if(!syncd){
+        syncd = true;
         CalculateSyncAndLaunchTasks();
     }
 }
@@ -578,24 +577,24 @@ void CalculateSyncAndLaunchTasks()
 
     if (!addedTasks){
         addedTasks = true;
-        _userScheduler.addTask(_botInitializationTask);
-        _userScheduler.addTask(_snifferInitializationTask);
-        _userScheduler.addTask(_channelHopTask);
-        _userScheduler.addTask(_resyncTask);
-        _userScheduler.addTask(_sendAlertTask);
+        userScheduler.addTask(_botInitializationTask);
+        userScheduler.addTask(snifferInitializationTask);
+        userScheduler.addTask(channelHopTask);
+        userScheduler.addTask(resyncTask);
+        userScheduler.addTask(_sendAlertTask);
     }
 
     //TODO get rid of this non-sense
-    _fromSync = true;
+    fromSync = true;
     _botInitializationTask.restartDelayed(syncDelay);
     // openMeshComm(false);
-    _snifferInitializationTask.restartDelayed(syncDelay + _meshCommInterval);
-    _channelHopTask.restartDelayed(syncDelay + _meshCommInterval);
-    _resyncTask.restartDelayed();
+    snifferInitializationTask.restartDelayed(syncDelay + meshCommInterval);
+    channelHopTask.restartDelayed(syncDelay + meshCommInterval);
+    resyncTask.restartDelayed();
 }
 void LaunchTasks(){
     // _botInitializationTask.restartDelayed();
-    _snifferInitializationTask.restartDelayed(_meshCommInterval);
-    _channelHopTask.restartDelayed(_meshCommInterval);
-    _resyncTask.restartDelayed();
+    snifferInitializationTask.restartDelayed(meshCommInterval);
+    channelHopTask.restartDelayed(meshCommInterval);
+    resyncTask.restartDelayed();
 }
