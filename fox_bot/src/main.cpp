@@ -19,7 +19,12 @@ extern "C"
 //set target here
 
 //FC:2D:5E:9B:3F:8F
-uint8_t _target[6] = { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F };
+// uint8_t _target[6] = { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F };
+std::vector<std::array<uint8_t, 6> > _targets =
+        {
+          { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F }
+        };
+
 
 #define SENSOR_ID             0x00
 #define DISABLE 0
@@ -63,6 +68,7 @@ int32_t _startTime = 0;
 uint32_t _meshCommInterval = 15000; //ms
 uint32_t _sniffInterval = 9000; //ms
 uint32_t _resyncInterval = 900000; //ms
+unsigned long _initDelay = 15000000;
 bool _syncd = false;
 uint8_t _channelHopInterval = 400;
 bool _alertMode = false;
@@ -157,13 +163,13 @@ int register_beacon(beaconinfo beacon)
 {
   // // add beacon to list if not already included
   int known = 0;   // Clear known flag
-  // for (int u = 0; u < aps_known_count; u++)
-  // {
-    if (! memcmp(_target, beacon.bssid, ETH_MAC_LEN)) {
-      known = 1;
-      // aps_known[u].last_heard = beacon.last_heard;
-      // break;
-    }   // AP known => Set known flag
+
+    for (const auto& target : _targets)
+    {
+      if (! memcmp(target.data(), beacon.bssid, 6)) {
+        known = 1;
+      }
+    }
   // }
   // if (! known)  // AP is NEW, copy MAC to array and return it
   // {
@@ -423,11 +429,6 @@ void openMeshComm(bool restartSnifferDelayed){
         _channelHopTask.restartDelayed(_meshCommInterval);
         // _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
     }
-
-        // _mesh.Reset();
-        _mesh.~painlessMesh();
-        // _mesh = new painlessMesh::painlessMesh();
-        _mesh.init( MESH_PREFIX, MESH_PASSWORD, &_userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
 }
 
 bool initializeSniffer(){
