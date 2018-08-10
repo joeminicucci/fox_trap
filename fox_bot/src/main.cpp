@@ -624,6 +624,7 @@ void setup() {
     meshInitialization();
 
   Serial.printf("BOT:SETUP\n");
+  Serial.printf("ID %d : ",ESP.getChipId());
 }
 
 void loop() {
