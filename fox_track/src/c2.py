@@ -106,7 +106,9 @@ def handle_c2_line(line, signalUserId, signalGroupId):
             text_file.write(channel)
 
         print('\x1b[6;30;42m' + str(datetime.datetime.time(datetime.datetime.now())) + '\x1b[0m')
-        print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
+        # print('\x1b[6;30;42m' + Alias.sub(line,False) + '\x1b[0m')
+        print('\x1b[6;30;42m' + line + '\x1b[0m')
+        time.sleep(3)
         sys.exit()
         # command = 'airodump-ng -c %s --bssid %s mon0' % (channel, mac)
         # for line2 in run_command(command):

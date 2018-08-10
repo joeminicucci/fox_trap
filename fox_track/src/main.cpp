@@ -1,7 +1,7 @@
 #include <painlessMesh.h>
 
-#define   MESH_PREFIX     "dc719"
-#define   MESH_PASSWORD   "whatdoesthefoxsay?"
+#define   MESH_PREFIX     "Caesars_Lobby"
+#define   MESH_PASSWORD   "whatdoesthefoxsay?!gofuckyourself"
 #define   MESH_PORT       5566
 
 // Prototype
@@ -133,9 +133,14 @@ void loop() {
 }
 
 void receivedCallback( uint32_t from, String &msg ) {
-  Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
+  // Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
   DynamicJsonBuffer jsonBuffer;
   JsonObject& root = jsonBuffer.parseObject(msg);
+  if (root.containsKey("from"))
+    {
+      long trueFrom = root["found"];
+      Serial.printf("logServer: Received from %u msg=%s\n", trueFrom, msg.c_str());
+    }
   if (root.containsKey("found")) {
       // if (String("logServer").equals(root["topic"].as<String>())) {
           // check for on: true or false
