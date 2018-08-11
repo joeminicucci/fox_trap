@@ -1,7 +1,10 @@
 #!/usr/bin/python
 
-import serial, subprocess, sys, argparse, re, aenum, datetime
+import serial, subprocess, sys, argparse, re, aenum, datetime, pygame
 from aenum import Enum
+from pygame import mixer # Load the required library
+
+
 
 # ser = serial.Serial()
 # ser.baudrate = 115200
@@ -83,16 +86,19 @@ def run_command(command):
 def run_signal_comm(signal_user_id, signal_group_id, found_message):
     print('SIGNAL COMMAND:', 'signal-cli -u %s send -m \"%s\" -g %s &' % (signal_user_id, found_message,signal_group_id))
     command = 'signal-cli -u %s send -m \"%s\" -g %s &' % (signal_user_id, found_message,signal_group_id)
-    # p = subprocess.Popen(command,
-                         # shell=True,
-                         # stdout=subprocess.PIPE,
-                         # stderr=subprocess.STDOUT)
+    p = subprocess.Popen(command,
+                          shell=True,
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT)
 
 
 def handle_c2_line(line, signalUserId, signalGroupId):
     # line_pieces = re.split(r'\s+',line)
     line_pieces = line.split('|')
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
+        mixer.init()
+        mixer.music.load("./ALARM.ogg")
+        mixer.music.play()
         print("Begin signal comm")
         run_signal_comm(signalUserId,signalGroupId,line)
         print("End signal comm")
@@ -158,6 +164,7 @@ def main(argv):
             if ser.isOpen():
                 ser.close()
             ser.open()
+
             while 1:
                 bytesToRead = ser.inWaiting()
                 if bytesToRead:
