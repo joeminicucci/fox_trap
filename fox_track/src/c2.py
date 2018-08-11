@@ -1,8 +1,7 @@
 #!/usr/bin/python
 
-import serial, subprocess, sys, argparse, re, aenum, datetime, pygame
+import serial, subprocess, sys, argparse, re, aenum, datetime
 from aenum import Enum
-from pygame import mixer # Load the required library
 
 
 
@@ -96,9 +95,6 @@ def handle_c2_line(line, signalUserId, signalGroupId):
     # line_pieces = re.split(r'\s+',line)
     line_pieces = line.split('|')
     if line_pieces and line_pieces[0].startswith("[FOUND]"):
-        mixer.init()
-        mixer.music.load("./ALARM.ogg")
-        mixer.music.play()
         print("Begin signal comm")
         run_signal_comm(signalUserId,signalGroupId,line)
         print("End signal comm")
