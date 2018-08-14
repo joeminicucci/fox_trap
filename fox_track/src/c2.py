@@ -102,9 +102,9 @@ def handle_c2_line(line, signalUserId, signalGroupId):
         mac = line_pieces[1].strip()
         channel = line_pieces[2].strip()
 
-        with open("Mac.txt","w") as text_file:
+        with open("Mac","w") as text_file:
             text_file.write(mac)
-        with open("Channel.txt","w") as text_file:
+        with open("Channel","w") as text_file:
             text_file.write(channel)
 
         print('\x1b[6;30;42m' + str(datetime.datetime.time(datetime.datetime.now())) + '\x1b[0m')
@@ -112,9 +112,6 @@ def handle_c2_line(line, signalUserId, signalGroupId):
         print('\x1b[6;30;42m' + line + '\x1b[0m')
         time.sleep(3)
         sys.exit()
-        # command = 'airodump-ng -c %s --bssid %s mon0' % (channel, mac)
-        # for line2 in run_command(command):
-        #     print(line2)
 
     elif line:
         print (line)
@@ -123,32 +120,31 @@ def handle_c2_line(line, signalUserId, signalGroupId):
 #
 #
 def main(argv):
-    # mode = 1
-    # usage = 'c2.py -s <serialPort> -u <signalUserId> -g <signalGroupId>'
-
     parser = argparse.ArgumentParser(description='Keep track of a sniffly mesh network and issue signal messages accordingly')
     parser.add_argument('-s', "--serialPort",
                         help='The serial port to monitor',
                         required=True)
     parser.add_argument('-u', '--signalUserId',
                         help='The signal user id to send messages with',
-                        required=True)
+                        required=False)
     parser.add_argument('-g','--signalGroupId',
                         help='The signal group id to send messages to',
-                        required=True)
+                        required=False)
     parser.add_argument('-m','--mode',
                         help='The mode you would like to run in.\n mode 1 is via pyserial and mode 2 is via pio monitoring',
                         required=True)
 
     args = parser.parse_args()
-    # if '-s' in args || '--serialPort'
     serialPort = args.serialPort
+    if (args.signalGroupId and not args.signalUserId) or (args.signalUserId and not args.signalGroupId):
+        print "Signal group ID and signal user ID are mututally dependent arguments and must be supplied together."
+        parser.print_help()
+        sys.exit()
     signalUserId = args.signalUserId
     signalGroupId = args.signalGroupId
     mode = args.mode
 
     # print ("TESTING SIGNAL OUT: " + 'signal-cli -u %s -m %s -g %s' % (signalUserId, signalGroupId, 'gi'))
-
     print 'Serial: ', serialPort
     print 'signalUserId: ', signalUserId
     print 'signalGroupId: ', signalGroupId
@@ -172,31 +168,9 @@ def main(argv):
                 handle_c2_line(line, signalUserId, signalGroupId)
 
     except KeyboardInterrupt:
-        print "\nDied with honor."
+        print "\nKilled.\n"
         ser.close()
 
-# class Alias(Enum):
-#     _init_ = 'value text'
-#     bob = 12345, 'Bob'
-#     jon = 23456, 'Jon'
-#     jack = 34567, 'Jack'
-#     jill = 45678, 'Jill'
-#     steph = 89012, 'Steph'
-#     @classmethod
-#     def sub(cls, line):
-#         return re.sub('\d{5}', lambda v: cls(int(v.group())).text, line)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
-# def runProcess(exe):
-#     p = subprocess.Popen(exe, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-#     while(True):
-#       retcode = p.poll() #returns None while subprocess is running
-#       line = p.stdout.readline()
-#       yield line
-#       if(retcode is not None):
-#         break
-#
-# for line in runProcess('pio device monitor --port /dev/ttyUSB0 --baud 115200'.split()):
-#     print line,
