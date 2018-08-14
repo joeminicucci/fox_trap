@@ -1,8 +1,3 @@
-//************************************************************
-// this is a simple example that uses the painlessMesh library to
-// setup a node that logs to a central logging node
-// The logServer example shows how to configure the central logging nodes
-//************************************************************
 extern "C"
 {
   #include <user_interface.h>
@@ -11,72 +6,37 @@ extern "C"
 #include <painlessMesh.h>
 #include <cstdint>
 #include "structures.h"
-// #ifndef SNIFFING_H
-// #define SNIFFING_H
 #include "sniffing.h"
-// #endif
 
-//set target here
-
+// Define these youself to customize the mesh mode operations
+uint16_t channel = 6;
+uint32_t meshCommInterval = 20000; //ms
+uint32_t sniffInterval = 9000; //ms
+uint32_t resyncInterval = 900000; //ms
+uint8_t channelHopInterval = 400;
+//set targets here
 std::vector<std::array<uint8_t, 6> > _targets =
         {
-          { 0xFC, 0x2D, 0x5E, 0x9B, 0x3F, 0x8F },
-          { 0xD2, 0xE4, 0x0B, 0xEA, 0xC8, 0x61 }, // Wifi Fox
-          { 0x00, 0xC0, 0xCA, 0x24, 0x85, 0x4E }, // Hide and Seek
-          { 0xD2, 0XE4, 0X0B, 0XF5, 0X10, 0X9C }, //WPA
-          { 0XB8, 0X27, 0XEB, 0XFB, 0X3D, 0XC1 }, //CLIENT
-          { 0XC8, 0XB5, 0XAD, 0XFF, 0X56, 0XB9 }
+          { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+          { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 }
         };
 
 
-#define SENSOR_ID             0x00
 #define DISABLE 0
 #define ENABLE  1
-#define TIME_PRECISION_MS = 10
 
 //Wifi Configuration
 #define   MESH_PREFIX     "Caesars_Lobby"
 #define   MESH_PASSWORD   "whatdoesthefoxsay?!gofuckyourself"
 #define   MESH_PORT       5566
 
-//Scheduling Intervals
-// #define RX_PER_CHANNEL_HOP 3
-#define RX_COMM_INTERVAL 10000
-
-
-// struct clientinfo
-// {
-//   uint8_t bssid[ETH_MAC_LEN];
-//   uint8_t station[ETH_MAC_LEN];
-//   uint8_t ap[ETH_MAC_LEN];
-//   int channel;
-//   int err;
-//   signed rssi;
-//   uint16_t seq_n;
-// /* rpw additions */
-//   uint8_t header;
-//   uint32_t last_heard;
-//   uint8_t reported;
-// };
-
-// struct clientinfo {
-//   uint8_t beacon[ETH_MAC_LEN];
-//   uint8_t station[ETH_MAC_LEN];
-//   uint8_t rssi;
-//   uint16_t seq;
-//   bool err;
-// };
-//
-
-//mesh members...NO_OBJECTS == NO_HOPE
+//Functions
 bool botInitialization();
 bool initializeSniffer();
 void channelHop();
 void resync();
 void meshDisabled();
 void snifferDisabled();
-static void showMetaData();
-uint8_t MostSignificantByte(uint32_t bytes);
 void receivedCallback( uint32_t from, String &msg );
 uint32_t CalculateSynchronizationDelay();
 void onTimeAdjusted(int32_t offset);
@@ -90,40 +50,28 @@ void getMAC(char *addr, uint8_t* data);
 struct clientinfo parse_probe(uint8_t *frame, uint16_t framelen, signed rssi, unsigned channel);
 int register_probe(clientinfo probe);
 void print_probe(clientinfo ci);
+uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
 
-void getMAC(char *addr, uint8_t* data) {
-  sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[0], data[1], data[2], data[3], data[4], data[5]);
-}
-
-
-
-// Prototype
-uint16_t channel = 6;
-// uint16_t _channelCount = 1;
-// long logServerId = 0;
-uint32_t meshCommInterval = 20000; //ms
-uint32_t sniffInterval = 9000; //ms
-uint32_t resyncInterval = 900000; //ms
-unsigned long _initDelay = 15000000;
-bool syncd = false;
-uint8_t channelHopInterval = 400;
-bool _alertMode = false;
 signed lastFoundRSSI = 0;
 int lastFoundChannel = 0;
-// uint8_t lastFoundMac[6] = {};
+bool syncd = false;
 char lastFoundMac[] = "00:00:00:00:00:00";
 bool fromSync = false;
+bool addedTasks = false;
+
 
 // void receivedCallback( uint31_t from, String &msg );
 Scheduler     userScheduler; // to control your personal task
 painlessMesh  mesh;
-Task _botInitializationTask(meshCommInterval, TASK_ONCE, &botInitialization, &userScheduler, false, NULL, &meshDisabled);
+Task botInitializationTask(meshCommInterval, TASK_ONCE, &botInitialization, &userScheduler, false, NULL, &meshDisabled);
 Task channelHopTask(channelHopInterval, TASK_FOREVER, &channelHop, &userScheduler, false, NULL, NULL);
 Task resyncTask(resyncInterval, TASK_ONCE, &resync, &userScheduler, false, NULL, NULL);
 Task snifferInitializationTask(sniffInterval, TASK_ONCE, &initializeSniffer, &userScheduler, false, NULL, &snifferDisabled);
-//Task::Task(long unsigned int, int, void (*)(), Scheduler*, bool, void (*)(), void (*)())'
 Task _sendAlertTask(TASK_SECOND * 2, 60, &sendAlert, &userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
-uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
+
+void getMAC(char *addr, uint8_t* data) {
+  sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[0], data[1], data[2], data[3], data[4], data[5]);
+}
 
 void channelHop()
 {
@@ -206,20 +154,8 @@ int register_beacon(beaconinfo beacon)
     {
       if (! memcmp(target.data(), beacon.bssid, 6)) {
         known = 1;
-      }
+        }
     }
-  // }
-  // if (! known)  // AP is NEW, copy MAC to array and return it
-  // {
-  //   memcpy(&aps_known[aps_known_count], &beacon, sizeof(beacon));
-  //   aps_known_count++;
-  //
-  //   if ((unsigned int) aps_known_count >=
-  //       sizeof (aps_known) / sizeof (aps_known[0]) ) {
-  //     Serial.printf("exceeded max aps_known\n");
-  //     aps_known_count = 0;
-  //   }
-  // }
   return known;
 }
 int register_probe(clientinfo probe)
@@ -233,18 +169,6 @@ int register_probe(clientinfo probe)
         known = 1;
       }
     }
-  // }
-  // if (! known)  // AP is NEW, copy MAC to array and return it
-  // {
-  //   memcpy(&aps_known[aps_known_count], &beacon, sizeof(beacon));
-  //   aps_known_count++;
-  //
-  //   if ((unsigned int) aps_known_count >=
-  //       sizeof (aps_known) / sizeof (aps_known[0]) ) {
-  //     Serial.printf("exceeded max aps_known\n");
-  //     aps_known_count = 0;
-  //   }
-  // }
   return known;
 }
 
@@ -410,20 +334,13 @@ void promisc_cb(uint8_t *buf, uint16_t len)
           }
           lastFoundRSSI = beacon.rssi;
           lastFoundChannel = beacon.channel;
-          // memcpy(lastFoundMac, beacon.bssid,ETH_MAC_LEN);
-            getMAC(lastFoundMac, beacon.bssid);
-
-
-          // sendAlert(beacon);
-          // nothing_new = 0;
+          getMAC(lastFoundMac, beacon.bssid);
         };
       }
       else
       {
         struct sniffer_buf *sniffer = (struct sniffer_buf*) buf;
         struct clientinfo probe = parse_probe(sniffer->buf, 36, sniffer->rx_ctrl.rssi, sniffer->rx_ctrl.channel);
-            // getMAC(lastFoundMac, probe.station);
-          // Serial.printf("PROBE FROM : %s", lastFoundMac);
 
         if (register_probe(probe) == 1)
         {
@@ -433,31 +350,16 @@ void promisc_cb(uint8_t *buf, uint16_t len)
 
         if (!_sendAlertTask.isEnabled())
         {
-            //We can thank the wonderful compiler for this hack, i.e. calling this function instead of properly setting the onEnable callback..
+            //having trouble getting the compiler to set the onEnable callback for the alert mode task
             initializeAlertMode();
         }
         lastFoundRSSI = probe.rssi;
         lastFoundChannel = probe.channel;
-        // memcpy(lastFoundMac, beacon.bssid,ETH_MAC_LEN);
         getMAC(lastFoundMac, probe.station);
       }
     }
-      // else
-      // {
-      //   print_pkt_header(buf,112,"UKNOWN:");
-      // };
   }
-  // else
-  // {
-    // struct sniffer_buf *sniffer = (struct sniffer_buf*) buf;
-    // struct clientinfo ci = parse_data(sniffer->buf, 36, sniffer->rx_ctrl.rssi, sniffer->rx_ctrl.channel);
-    // if (register_client(ci) == 0) {
-    //   print_client(ci);
-    //   nothing_new = 0;
-    // }
-  // }
 }
-
 
 /*
  * Function that parses client information from packet
@@ -516,8 +418,6 @@ struct clientinfo parse_probe(uint8_t *frame, uint16_t framelen, signed rssi, un
   return ci;
 }
 
-
-
 void print_probe(clientinfo ci) {
   Serial.print("\"");
   for (int i = 0; i < ETH_MAC_LEN; i++) {
@@ -557,7 +457,7 @@ void initializeAlertMode()
         resyncTask.disable();
         snifferInitializationTask.disable();
         channelHopTask.disable();
-        _botInitializationTask.disable();
+        botInitializationTask.disable();
 
         Serial.printf("SETTING ALERT MODE\n");
         openMeshComm(false);
@@ -573,7 +473,6 @@ bool botInitialization()
     }
     else
       openMeshComm(true);
-    // Serial.printf("BOT:botInitialization_END\n");
     return true;
 }
 
@@ -585,13 +484,11 @@ void openMeshComm(bool restartSnifferDelayed){
     {
         snifferInitializationTask.restartDelayed(meshCommInterval);
         channelHopTask.restartDelayed(meshCommInterval);
-        // mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, _channel);
     }
 }
 
 bool initializeSniffer(){
-    _botInitializationTask.restartDelayed(sniffInterval);
-    // mesh.stop();
+    botInitializationTask.restartDelayed(sniffInterval);
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(ENABLE);
 
@@ -601,14 +498,12 @@ bool initializeSniffer(){
 
 
 void meshInitialization(){
-    //keep the topology from fucking itself
+    //keep the topology correct
     mesh.setRoot(false);
-    // This and all other mesh should ideally now the mesh contains a root
     mesh.setContainsRoot(true);
     mesh.onReceive(&receivedCallback);
     mesh.onNodeTimeAdjusted(&onTimeAdjusted);
     // mesh.setDebugMsgTypes(SYNC | CONNECTION);  // set before init() so that you can see startup messages
-    //neeed to connect to the mesh once to get NTP sync
 
     mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, channel);
 }
@@ -619,12 +514,9 @@ void setup() {
   //  uint8_t mac[] = {0x77, 0x01, 0x02, 0x03, 0x04, 0x05};
   //wifi_set_macaddr(STATION_IF, &mac[0]);
     wifi_set_promiscuous_rx_cb(promisc_cb);
-    // Serial.printf("promiscuos callback set\n");
-
     meshInitialization();
 
-  Serial.printf("BOT:SETUP\n");
-  Serial.printf("ID %d : ",ESP.getChipId());
+  Serial.printf("ID %d : \n",ESP.getChipId());
 }
 
 void loop() {
@@ -643,32 +535,22 @@ void snifferDisabled(){
 
 
 void receivedCallback( uint32_t from, String &msg ) {
-  Serial.printf("logClient: Received from %u msg=%s\n", from, msg.c_str());
+  Serial.printf("[RECEIVED] from %u msg=%s\n", from, msg.c_str());
 
-  // Saving logServer
-  // DynamicJsonBuffer jsonBuffer;
-  // JsonObject& root = jsonBuffer.parseObject(msg);
-  // if (root.containsKey("initialize")) {
-  //         _startTime = (root["initialize"] > _startTime)
-  //           ? root["initialize"]
-  //           : _startTime;
-  //   }
-  //
     DynamicJsonBuffer jsonBuffer;
     JsonObject& root = jsonBuffer.parseObject(msg);
     if (_sendAlertTask.isEnabled() && root.containsKey("foundack") ){
         if (root["foundack"] == ESP.getChipId())
         {
-
-            //try a one ditch effort to get the server to stfu. could make this a multi-ditch effort, but dont want to burn alot of cycles
+            //Get the server to be quiet
             sendFinAck();
             //pull out of alerted state
             _sendAlertTask.disable();
         }
     }
-      Serial.printf("logClient: Handled from %u msg=%s\n", from, msg.c_str());
 }
 
+//Fin ack is used to get the server to stop sending FIN messages
 void sendFinAck(){
     DynamicJsonBuffer jsonBuffer;
     JsonObject& msg = jsonBuffer.createObject();
@@ -680,15 +562,16 @@ void sendFinAck(){
     msg.printTo(Serial);
     Serial.printf("\n");
 }
+
+//Synchronization uses SNTP built into painlessMesh in order to keep the bots in synchronization across modes
 uint32_t CalculateSynchronizationDelay(){
   uint32_t current = mesh.getNodeTime();
-
   //offset current time from the target interval
   //pulling by 1ms
   Serial.printf("current time is: %i microS\n",current);
   current = current / 1000;
 
-uint32_t precision  = (meshCommInterval + sniffInterval);
+  uint32_t precision  = (meshCommInterval + sniffInterval);
   //get the next closest interval to synchronize with the mesh
   uint32_t nextThreshold = roundUp(current, precision);
   Serial.printf("current time is: %i mS\n",current);
@@ -697,7 +580,7 @@ uint32_t precision  = (meshCommInterval + sniffInterval);
   return nextThreshold;
 }
 
-//rounds from nearest interval of 10ms (time precision) multiplied by the defined time synchronization
+//rounds from nearest interval of 10ms (time precision guaranteed by painlessMesh) multiplied by the defined time synchronization
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple)
 {
     if (multiple == 0)
@@ -718,7 +601,6 @@ void onTimeAdjusted(int32_t offset){
     }
 }
 
-bool addedTasks = false;
 void CalculateSyncAndLaunchTasks()
 {
     uint32_t syncDelay = CalculateSynchronizationDelay();
@@ -726,23 +608,20 @@ void CalculateSyncAndLaunchTasks()
 
     if (!addedTasks){
         addedTasks = true;
-        userScheduler.addTask(_botInitializationTask);
+        userScheduler.addTask(botInitializationTask);
         userScheduler.addTask(snifferInitializationTask);
         userScheduler.addTask(channelHopTask);
         userScheduler.addTask(resyncTask);
         userScheduler.addTask(_sendAlertTask);
     }
 
-    //TODO get rid of this non-sense
     fromSync = true;
-    _botInitializationTask.restartDelayed(syncDelay);
-    // openMeshComm(false);
+    botInitializationTask.restartDelayed(syncDelay);
     snifferInitializationTask.restartDelayed(syncDelay + meshCommInterval);
     channelHopTask.restartDelayed(syncDelay + meshCommInterval);
     resyncTask.restartDelayed();
 }
 void LaunchTasks(){
-    // _botInitializationTask.restartDelayed();
     snifferInitializationTask.restartDelayed(meshCommInterval);
     channelHopTask.restartDelayed(meshCommInterval);
     resyncTask.restartDelayed();
