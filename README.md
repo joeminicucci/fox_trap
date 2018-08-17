@@ -1,3 +1,7 @@
+CREDIT: 
+  Todd Cronin: Hardware and conceptual design
+  Joe Minicucci: Software implementation and architecture
+
 #Hardware
 
 ESP8266 - https://www.amazon.com/gp/product/B071HCX3X7/ref=oh_aui_search_detailpage?ie=UTF8&psc=1
