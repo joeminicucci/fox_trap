@@ -26,8 +26,8 @@ std::vector<std::array<uint8_t, 6> > _targets =
 #define ENABLE  1
 
 //Wifi Configuration
-#define   MESH_PREFIX     "Caesars_Lobby"
-#define   MESH_PASSWORD   "whatdoesthefoxsay?!gofuckyourself"
+#define   MESH_PREFIX     "Not_a_botnet"
+#define   MESH_PASSWORD   "password"
 #define   MESH_PORT       5566
 
 //Functions
