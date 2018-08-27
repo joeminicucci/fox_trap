@@ -1,10 +1,10 @@
 # Fox Trap
 
-Fox Trap is a modular, wireless mesh based Command and Control infrastructure for locating mobile rogue access points, and conducting wireless red team ops in the field. Each **[Node]{https://github.com/joeminicucci/fox_trap/blob/master/fox_bot}** works by having tasks run synchronously, and then dropping into a communication mode where the mesh network exchanges information and passes it back to a **[root node]{https://github.com/joeminicucci/fox_trap/tree/master/fox_track}**. 
+Fox Trap is a modular, wireless mesh based Command and Control infrastructure for locating mobile rogue access points, and conducting wireless red team ops in the field. Each **[Node](https://github.com/joeminicucci/fox_trap/blob/master/fox_bot)** works by having tasks run synchronously, and then dropping into a communication mode where the mesh network exchanges information and passes it back to a **[root node](https://github.com/joeminicucci/fox_trap/tree/master/fox_track)**. 
 
 ## Implementation
 
-###Tasking
+### Tasking
 The current implementation scans for target BSSIDs from a list of targets, and then reports back to the root node as soon as it detects a target. The following tasks are used to accomplish this:
 
    * botInitializationTask : Opens the mesh comm mode
@@ -19,18 +19,11 @@ The current implementation scans for target BSSIDs from a list of targets, and t
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
-### Prerequisites
-
-What things you need to install the software and how to install them
-
-```
-* [PlatformIO](https://github.com/esp8266/arduino#using-platformio)
-* **OPTIONAL** [Signal-CLI](https://github.com/AsamK/signal-cli)
-```
-
 ### Installing
 
-We recommend using Atom IDE and PlatfomIO as a development environment. Assuming you have those installed, simply clone the project and open it with PlatformIO. If you want to create the project from scratch, be sure to set NodeMCU as the chipset firmware.
+We recommend using Atom IDE and PlatfomIO as a development environment. Assuming you have those installed, simply clone the project and open it with PlatformIO. If you want to create the project from scratch, be sure to set NodeMCU as the chipset firmware. Optionally, you can use the Signal CLI to report target sightings via a Signal group.
+* [PlatformIO](https://github.com/esp8266/arduino#using-platformio)
+* **OPTIONAL** [Signal-CLI](https://github.com/AsamK/signal-cli)
 
 
 
