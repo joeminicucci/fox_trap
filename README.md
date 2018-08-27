@@ -28,7 +28,36 @@ We recommend using Atom IDE and PlatfomIO as a development environment. Assuming
 The design philosophy of the framework is to base all decisions off of the interval lengths of each task. In this manner, future implementations will support the addition of tasking.
 
 #### Bot Config
+Tailor the following variables (directly below the #include directives) to your wireless environment:
+// Define these youself to customize the mesh mode operations
+ * uint16_t channel : Wireless Channel 
+ * uint32_t meshCommInterval : The amount of time for mesh communication (Default 20000 ms)
+ * uint32_t sniffInterval : The amount of time to sniff for targets (Default 9000 ms)
+ * uint32_t resyncInterval : How often to resyncronize communication to the (Default 900000)
+ * uint8_t channelHopInterval : How often to change channels while in sniff mode (Default 400 ms)
+
+Wifi Configuration : Define the Wifi config the same in both root and bots
+```
+#define   MESH_PREFIX     "Your_Mesh_SSID"
+#define   MESH_PASSWORD   "Your_Mesh_Password"
+#define   MESH_PORT       5566
+```
+Setting the targets is a matter of re-defining the _targets vector. For example if you were looking for 00:20:91:11:22:33 and 00:20:91:11:22:44 your vector would look like
+```
+std::vector<std::array<uint8_t, 6> > _targets =
+        {
+          { 0x00, 0x20, 0x91, 0x11, 0x22, 0x33 },
+          { 0x00, 0x20, 0x91, 0x11, 0x22, 0x44 }
+};
+```
 #### Root Config
+
+Wifi Configuration : Define the Wifi config the same in both root and bots
+```
+#define   MESH_PREFIX     "Your_Mesh_SSID"
+#define   MESH_PASSWORD   "Your_Mesh_Password"
+#define   MESH_PORT       5566
+```
 ## Usage
 
 ## Software used
