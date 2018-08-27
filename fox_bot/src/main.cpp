@@ -14,6 +14,8 @@ uint32_t meshCommInterval = 20000; //ms
 uint32_t sniffInterval = 9000; //ms
 uint32_t resyncInterval = 900000; //ms
 uint8_t channelHopInterval = 400;
+unsigned long alertSeconds = 3;
+uint32_t alertTimes = 20;
 
 //Wifi Configuration
 #define   MESH_PREFIX     "Not_a_botnet"
@@ -68,7 +70,7 @@ Task botInitializationTask(meshCommInterval, TASK_ONCE, &botInitialization, &use
 Task channelHopTask(channelHopInterval, TASK_FOREVER, &channelHop, &userScheduler, false, NULL, NULL);
 Task resyncTask(resyncInterval, TASK_ONCE, &resync, &userScheduler, false, NULL, NULL);
 Task snifferInitializationTask(sniffInterval, TASK_ONCE, &initializeSniffer, &userScheduler, false, NULL, &snifferDisabled);
-Task _sendAlertTask(TASK_SECOND * 2, 60, &sendAlert, &userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
+Task _sendAlertTask(TASK_SECOND * alertSeconds, alertTimes, &sendAlert, &userScheduler, false, NULL, &CalculateSyncAndLaunchTasks);
 
 void getMAC(char *addr, uint8_t* data) {
   sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[0], data[1], data[2], data[3], data[4], data[5]);
