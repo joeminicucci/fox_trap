@@ -14,6 +14,12 @@ uint32_t meshCommInterval = 20000; //ms
 uint32_t sniffInterval = 9000; //ms
 uint32_t resyncInterval = 900000; //ms
 uint8_t channelHopInterval = 400;
+
+//Wifi Configuration
+#define   MESH_PREFIX     "Not_a_botnet"
+#define   MESH_PASSWORD   "password"
+#define   MESH_PORT       5566
+
 //set targets here
 std::vector<std::array<uint8_t, 6> > _targets =
         {
@@ -24,11 +30,6 @@ std::vector<std::array<uint8_t, 6> > _targets =
 
 #define DISABLE 0
 #define ENABLE  1
-
-//Wifi Configuration
-#define   MESH_PREFIX     "Not_a_botnet"
-#define   MESH_PASSWORD   "password"
-#define   MESH_PORT       5566
 
 //Functions
 bool botInitialization();
