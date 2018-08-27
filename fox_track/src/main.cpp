@@ -4,6 +4,10 @@
 #define   MESH_PASSWORD   "password"
 #define   MESH_PORT       5566
 
+//Define these
+unsigned long ackSeconds = 3;
+uint32_t ackTimes = 20;
+
 // Prototype
 Scheduler     userScheduler; // to control your personal task
 painlessMesh  mesh;
@@ -21,7 +25,7 @@ void acknowledgeTargets();
 void disableAck();
 //Async functions
 Task rootInitializationTask(TASK_IMMEDIATE, TASK_ONCE, &rootInitialization, &userScheduler);
-Task acknowledgementTask(TASK_SECOND * 3, 20, &acknowledgeTargets, &userScheduler, false, NULL, &disableAck);
+Task acknowledgementTask(TASK_SECOND * ackSeconds, ackTimes, &acknowledgeTargets, &userScheduler, false, NULL, &disableAck);
 
 
 void acknowledgeTargets(){
