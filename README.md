@@ -1,8 +1,19 @@
 # Fox Trap
 
-Fox Trap is a modular, wireless mesh based Command and Control infrastructure for locating mobile rogue access points, and conducting wireless red team ops in the field. The current implementation 
+Fox Trap is a modular, wireless mesh based Command and Control infrastructure for locating mobile rogue access points, and conducting wireless red team ops in the field. Each **[Node]{https://github.com/joeminicucci/fox_trap/blob/master/fox_bot}** works by having tasks run synchronously, and then dropping into a communication mode where the mesh network exchanges information and passes it back to a **[root node]{https://github.com/joeminicucci/fox_trap/tree/master/fox_track}**. 
 
-scans for target BSSIDs from a list of targets, 
+## Implementation
+
+###Tasking
+The current implementation scans for target BSSIDs from a list of targets, and then reports back to the root node as soon as it detects a target. The following tasks are used to accomplish this:
+
+   * botInitializationTask : Opens the mesh comm mode
+   * channelHopTask : Changes the wireless channels at specified time intervals
+   * resyncTask : Sets flag to resynchronize node to the mesh at a guaranteed period
+   * snifferInitializationTask : Places the node into 'sniffing' promiscuous mode and scans the air for a MAC contained in the targets list
+   * sendAlertTask : Drops out of sniffing mode when a target is found and continuously reports to the mesh
+
+
 
 ## Getting Started
 
@@ -13,26 +24,13 @@ These instructions will get you a copy of the project up and running on your loc
 What things you need to install the software and how to install them
 
 ```
-Give examples
+* [PlatformIO](https://github.com/esp8266/arduino#using-platformio)
+* **OPTIONAL** [Signal-CLI](https://github.com/AsamK/signal-cli)
 ```
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
+We recommend using Atom IDE and PlatfomIO as a development environment. Assuming you have those installed, simply clone the project and open it with PlatformIO. If you want to create the project from scratch, be sure to set NodeMCU as the chipset firmware.
 
 
 
@@ -40,6 +38,7 @@ End with an example of getting some data out of the system or using it for a lit
 
 * [PlatformIO](https://github.com/esp8266/arduino#using-platformio)
 * [Painless Mesh](https://gitlab.com/painlessMesh/painlessMesh)
+* [Arduino Task Scheduler](https://github.com/arkhipenko/TaskScheduler)
 * [Ray Burnette's Wifi Sniffer](https://www.hackster.io/rayburne/esp8266-mini-sniff-f6b93a)
 * [rw950431's Probe collection logic](https://github.com/rw950431/ESP8266mini-sniff)
 * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
@@ -62,4 +61,4 @@ This project is licensed under the GNU General Public License - see the [LICENSE
 
 ## Acknowledgments
 
-* Defcon Wireless Village - Thanks for having us and for the inspiration to create Fox Trap
+* Defcon Wireless Village - Thanks for holding the Defcon wireless WTF and for the inspiration to create Fox Trap
