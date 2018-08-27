@@ -7,25 +7,29 @@ Fox Trap is a modular, wireless mesh based Command and Control infrastructure fo
 ### Bot Tasking
 The current implementation of a bot node scans for target BSSIDs from a list of targets, and then reports back to the root node as soon as it detects a target. The following tasks are used to accomplish this:
 
-   * botInitializationTask : Opens the mesh comm mode
-   * channelHopTask : Changes the wireless channels at specified time intervals
-   * resyncTask : Sets flag to resynchronize node to the mesh at a guaranteed period
-   * snifferInitializationTask : Places the node into 'sniffing' promiscuous mode and scans the air for a MAC contained in the targets list
-   * sendAlertTask : Drops out of sniffing mode when a target is found and continuously reports to the mesh
+   * botInitialization : Opens the mesh comm mode
+   * channelHop : Changes the wireless channels at specified time intervals
+   * resync : Sets flag to resynchronize node to the mesh at a guaranteed period
+   * snifferInitialization : Places the node into 'sniffing' promiscuous mode and scans the air for a MAC contained in the targets list
+   * sendAlert : Drops out of sniffing mode when a target is found and continuously reports to the mesh
    
 ### Root Tasking
 The current implementation of a root node simply opens the mesh and handles communications across the mesh network with the following tasks:
    * rootInitializationTask : a one time mesh initialization which opens the network
    * acknowledgementTask : these tasks are only used after receiving a target sighting from a bot. It will attempt for a given amount of times / per interval to acknowledge to the bot it has received the sighting so that the bot can go back to doing its jobs. The bot will subsequently send a finAck to get the server to stop this task.
 
-## Installing
+## Installation
 
 We recommend using Atom IDE and PlatfomIO as a development environment. Assuming you have those installed, simply clone the project and open it with PlatformIO. If you want to create the project from scratch, be sure to set NodeMCU as the chipset firmware. Optionally, you can use the Signal CLI to report target sightings via a Signal group.
 * [PlatformIO](https://github.com/esp8266/arduino#using-platformio)
 * **OPTIONAL** [Signal-CLI](https://github.com/AsamK/signal-cli)
 
 ### Configuration
+The design philosophy of the framework is to base all decisions off of the interval lengths of each task. In this manner, future implementations will support the addition of tasking.
 
+#### Bot Config
+#### Root Config
+## Usage
 
 ## Software used
 
@@ -55,3 +59,13 @@ This project is licensed under the GNU General Public License - see the [LICENSE
 ## Acknowledgments
 
 * Defcon Wireless Village - Thanks for holding the Defcon wireless WTF and for the inspiration to create Fox Trap
+
+## TODO
+ * Provide the bots an object oriented design pattern for dynamic reconfiguration, i.e. receiving C2 commands over the air
+ * Allow for C2 updates using the [c2Update.py script](c2Update.py). Since commands are written over serial, simply pull it out in the Root code and then send it over the mesh at an appropriate synchronization interval. C2 updates could include functionality such as:
+   * Change MAC addresses, SSID, and WIFI password to subvert adversarial traffic / attacks
+   * Change targets dynamically
+   * Put bots to sleep for an interval to save battery
+   * Weaponization
+     * Beacon / Probe spamming to disinform
+     * Deauthentication
