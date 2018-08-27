@@ -29,12 +29,13 @@ The design philosophy of the framework is to base all decisions off of the inter
 
 #### Bot Config
 Tailor the following variables (directly below the #include directives) to your wireless environment:
-// Define these youself to customize the mesh mode operations
  * uint16_t channel : Wireless Channel 
  * uint32_t meshCommInterval : The amount of time for mesh communication (Default 20000 ms)
  * uint32_t sniffInterval : The amount of time to sniff for targets (Default 9000 ms)
  * uint32_t resyncInterval : How often to resyncronize communication to the (Default 900000)
  * uint8_t channelHopInterval : How often to change channels while in sniff mode (Default 400 ms)
+ * unsigned long alertSeconds : How often to send a sighting alert across the mesh (Default 3 seconds)
+ * uint32_t alertTimes : How many times to attempt to send a sighting alert (Default 20 times)
 
 Wifi Configuration : Define the Wifi config the same in both root and bots
 ```
@@ -58,6 +59,10 @@ Wifi Configuration : Define the Wifi config the same in both root and bots
 #define   MESH_PASSWORD   "Your_Mesh_Password"
 #define   MESH_PORT       5566
 ```
+Tailor the following variables (directly below the #include directives) to your wireless environment:
+ * unsigned long ackSeconds : How often you want the root to send acknowledgement signals back to bots with sightings (Default 3 seconds)
+ * uint32_t ackTimes : How long you want the root to send acknowledgement signals back to bots (default 20 times)
+
 ## Usage
 
 ## Software used
@@ -88,6 +93,7 @@ This project is licensed under the GNU General Public License - see the [LICENSE
 ## Acknowledgments
 
 * Defcon Wireless Village - Thanks for holding the Defcon wireless WTF and for the inspiration to create Fox Trap
+* Lars Juhl Jensen - Thanks for the [idea](https://github.com/larsjuhljensen/phatsniffer) of sending commands over serial. A future implementation could use the same logic to create a more robust command infrastructure.
 
 ## TODO
  * Provide the bots an object oriented design pattern for dynamic reconfiguration, i.e. receiving C2 commands over the air
