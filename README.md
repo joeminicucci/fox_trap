@@ -1,6 +1,6 @@
 # Fox Trap
 
-Fox Trap is a modular, wireless mesh based Command and Control infrastructure for locating mobile rogue access points, and conducting wireless red team ops in the field. Each **[Bot Node](https://github.com/joeminicucci/fox_trap/blob/master/fox_bot)** works by having tasks run synchronously, and then dropping into a communication mode where the mesh network exchanges information and passes it back to a **[Root Node](https://github.com/joeminicucci/fox_trap/tree/master/fox_track)**. 
+Fox Trap is a modular, wireless mesh based Command and Control infrastructure for locating mobile rogue access points, and conducting wireless blue / red team ops in the field. Each **[Bot Node](https://github.com/joeminicucci/fox_trap/blob/master/fox_bot)** works by having tasks run synchronously, and then dropping into a communication mode where the mesh network exchanges information and passes it back to a **[Root Node](https://github.com/joeminicucci/fox_trap/tree/master/fox_track)**. The framework was written for the [ESP8266](https://www.espressif.com/en/products/hardware/esp8266ex/overview) and leverages the [EspressIf ESP-SDK](hhttps://www.espressif.com/en/products/software/esp-sdk/overview). Other chips utilizing the ESP-SDK should also be compatible.
 
 ## Implementation
 
@@ -43,7 +43,7 @@ Wifi Configuration : Define the Wifi config the same in both root and bots
 #define   MESH_PASSWORD   "Your_Mesh_Password"
 #define   MESH_PORT       5566
 ```
-Setting the targets is a matter of re-defining the _targets vector. For example if you were looking for 00:20:91:11:22:33 and 00:20:91:11:22:44 your vector would look like
+Setting the targets is a matter of re-defining the _targets vector. For example if you were looking for ``00:20:91:11:22:33`` and ``00:20:91:11:22:44`` your vector would look like
 ```
 std::vector<std::array<uint8_t, 6> > _targets =
         {
@@ -51,6 +51,8 @@ std::vector<std::array<uint8_t, 6> > _targets =
           { 0x00, 0x20, 0x91, 0x11, 0x22, 0x44 }
 };
 ```
+
+
 #### Root Config
 
 Wifi Configuration : Define the Wifi config the same in both root and bots
@@ -64,6 +66,35 @@ Tailor the following variables (directly below the #include directives) to your 
  * uint32_t ackTimes : How long you want the root to send acknowledgement signals back to bots (default 20 times)
 
 ## Usage
+**Note**: You will need pyserial installed to run the root with Python 2. The root operates over a serial port.
+There are two serial monitoring modes, 1 and 2:
+ * Mode 1 uses pyserial and may require adjustment to the timeout parameter, however provides more granular monitoring
+ * Mode 2 uses the PlatformIO serial monitoring tool
+ 
+### Generic usage:
+
+```
+usage: c2.py [-h] -s SERIALPORT [-u SIGNALUSERID] [-g SIGNALGROUPID] -m MODE
+```
+
+### Typical Scenario
+Monitor in Mode 1, exit when target found
+
+```
+python2 c2.py -s /dev/ttyUSB1 -m 1
+```
+### Signal Notification Scenario: 
+Monitor and send signal notifications (from user 123) to a group (345) when a target is found, then exit
+
+```
+python2 c2.py -s /dev/ttyUSB1 -u 123 -g 345 -m 2
+```
+
+### airodump-ng Auto-Hunt Scenario
+Run the Signal Notification Scenario, exit when target found and immeadeatly drop into airodump-ng scan mode with the target MAC and channel selected
+```
+python2 c2.py -s /dev/ttyUSB1 -u 123 -g 345 -m 2 && launchAiro.sh
+```
 
 ## Software used
 
