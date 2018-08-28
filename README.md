@@ -2,7 +2,7 @@
 
 Fox Trap is a modular, wireless mesh based Command and Control infrastructure for locating mobile rogue access points, and conducting wireless blue / red team ops in the field. Each **[Bot Node](https://github.com/joeminicucci/fox_trap/blob/master/fox_bot)** works by having tasks run synchronously, and then dropping into a communication mode where the mesh network exchanges information and passes it back to a **[Root Node](https://github.com/joeminicucci/fox_trap/tree/master/fox_track)**. The framework was written for the [ESP8266](https://www.espressif.com/en/products/hardware/esp8266ex/overview) and leverages the [EspressIf ESP-SDK](hhttps://www.espressif.com/en/products/software/esp-sdk/overview). Other chips utilizing the ESP-SDK should also be compatible.
 
-## Implementation
+## Software Implementation
 
 ### Bot Tasking
 The current implementation of a bot node scans for target BSSIDs from a list of targets, and then reports back to the root node as soon as it detects a target. The following tasks are used to accomplish this:
