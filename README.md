@@ -66,9 +66,9 @@ Tailor the following variables (directly below the #include directives) to your 
  * uint32_t ackTimes : How long you want the root to send acknowledgement signals back to bots (default 20 times)
 
 ## Usage
-**Note**: You will need pyserial installed to run the root with Python 2. The root operates over a serial port.
-There are two serial monitoring modes, 1 and 2:
- * Mode 1 uses pyserial and may require adjustment to the timeout parameter, however provides more granular monitoring
+The root operates over a serial port. 
+There are two serial monitoring modes invoked with the [Python 2 c2 script](c2.py):
+ * Mode 1 uses pyserial and may require adjustment to the timeout parameter, however provides more granular monitoring.
  * Mode 2 uses the PlatformIO serial monitoring tool
  
 ### Generic usage:
