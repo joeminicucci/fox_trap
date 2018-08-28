@@ -1,10 +1,10 @@
 #!/bin/bash
 
-macfile="./Mac.txt"
+macfile="./Mac"
 
 mac=$(cat "$macfile")
 
-channelfile="./Channel.txt"
+channelfile="./Channel"
 
 channel=$(cat "$channelfile")
 
