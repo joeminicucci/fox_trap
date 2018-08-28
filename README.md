@@ -67,7 +67,7 @@ Tailor the following variables (directly below the #include directives) to your 
 
 ## Usage
 The root operates over a serial port. 
-There are two serial monitoring modes invoked with the [Python 2 c2 script](c2.py):
+There are two serial monitoring modes invoked with the [Python 2 c2 script](fox_track/src/c2.py):
  * Mode 1 uses pyserial and may require adjustment to the timeout parameter, however provides more granular monitoring.
  * Mode 2 uses the PlatformIO serial monitoring tool
  
