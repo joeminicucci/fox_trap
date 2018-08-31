@@ -12,11 +12,20 @@ The current implementation of a bot node scans for target BSSIDs from a list of 
    * resync : Sets flag to resynchronize node to the mesh at a guaranteed period
    * snifferInitialization : Places the node into 'sniffing' promiscuous mode and scans the air for a MAC contained in the targets list
    * sendAlert : Drops out of sniffing mode when a target is found and continuously reports to the mesh
+   ![alt text](img/bot_duty_cycle.png)
    
 ### Root Tasking
 The current implementation of a root node simply opens the mesh and handles communications across the mesh network with the following tasks:
    * rootInitializationTask : a one time mesh initialization which opens the network
    * acknowledgementTask : these tasks are only used after receiving a target sighting from a bot. It will attempt for a given amount of times / per interval to acknowledge to the bot it has received the sighting so that the bot can go back to doing its jobs. The bot will subsequently send a finAck to get the server to stop this task.
+   ![alt text](img/root_duty_cycle.png)
+   
+### Alert Mode
+Alert mode occcurs when a bot finds a target BSSID in promiscuous 'sniffer' mode. It immeadeatly drops out and sends a pre-defined amount of alerts (default ``uint32_t alertTimes = 20;``) at a pre-defined interval (default ``uint32_t alertTimes = 3;``). As soon as the root discovers one of these alerts, it too fires of a pre-defined amount of acknowledgements (default ``unsigned long uint32_t ackTimes = 20;``)  at a pre-defined interval (default ``unsigned long ackSeconds = 3;``). Finally, if the bot receives the acknowledgement, it will fire one finish acknowledgement message back to the root in an attempt to quiet the root down. It then resynchronizes itself via the built-in painlessmesh NTP, and returns to the normal duty cycle.
+![alt text](img/alert_mode.png)
+
+### Resynchronization
+
 
 ## Installation
 
