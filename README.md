@@ -9,7 +9,7 @@ We recommend using Atom IDE and PlatfomIO as a development environment. Assuming
 * **OPTIONAL** [Signal-CLI](https://github.com/AsamK/signal-cli)
 
 ### Configuration
-The design philosophy of the framework is to base all decisions off of the interval lengths of each task. In this manner, future implementations will support the addition of tasking.
+The design philosophy of the framework is to base all decisions off of the interval lengths of each task. To understand the tasks, please see the Software Implementation Section below. Otherwise you may run it with the default values and skip to the Usage section.
 
 #### Bot Config
 Tailor the following variables (directly below the #include directives) to your wireless environment:
