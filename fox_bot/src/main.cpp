@@ -1,3 +1,8 @@
+/*
+Created by Joe Miniccui and Todd Cronin
+PoC#1: DEFCON 26 RESULT: Failure
+PcC#2: TBD       RESULT: Less Fail
+*/
 extern "C"
 {
   #include <user_interface.h>
