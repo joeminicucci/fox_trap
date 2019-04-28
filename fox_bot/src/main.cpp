@@ -82,7 +82,7 @@ void channelHop()
   uint8 new_channel = wifi_get_channel() + 1;
   if (new_channel > 13)
     new_channel = 1;
-// Serial.printf("***HOP***\n");
+  //Serial.printf("***HOP***\n");
   wifi_set_channel(new_channel);
   // _channelCount+=1;
 }
@@ -437,8 +437,7 @@ void print_probe(clientinfo ci) {
 
 void sendAlert()
 {
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& msg = jsonBuffer.createObject();
+    DynamicJsonDocument msg(100);
     msg["from"] = ESP.getChipId();
     msg["found"] = ESP.getChipId();
     msg["rssi"] = lastFoundRSSI;
@@ -446,11 +445,11 @@ void sendAlert()
     msg["mac"] = lastFoundMac;
 
     String str;
-    msg.printTo(str);
+    serializeJson(msg, str);
     mesh.sendBroadcast(str);
 
     // log to serial
-    msg.printTo(Serial);
+    serializeJson(msg, Serial);
     Serial.printf("\n");
 
 }
@@ -540,8 +539,11 @@ void snifferDisabled(){
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("[RECEIVED] from %u msg=%s\n", from, msg.c_str());
 
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& root = jsonBuffer.parseObject(msg);
+    DynamicJsonDocument root(100);
+    DeserializationError error = deserializeJson(root, msg);
+    if (error)
+      Serial.printf("[FAILED] CALLBACK MESSAGE PARSE!");
+      return;
     if (_sendAlertTask.isEnabled() && root.containsKey("foundack") ){
         if (root["foundack"] == ESP.getChipId())
         {
@@ -555,14 +557,13 @@ void receivedCallback( uint32_t from, String &msg ) {
 
 //Fin ack is used to get the server to stop sending FIN messages
 void sendFinAck(){
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& msg = jsonBuffer.createObject();
+    DynamicJsonDocument msg(15);
     msg["from"] = ESP.getChipId();
     msg["fin_ack"] = ESP.getChipId();
     String str;
-    msg.printTo(str);
+    serializeJson(msg, str);
     mesh.sendBroadcast(str);
-    msg.printTo(Serial);
+    serializeJson(msg, str);
     Serial.printf("\n");
 }
 

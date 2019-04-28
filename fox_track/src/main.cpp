@@ -33,14 +33,14 @@ void acknowledgeTargets(){
     if (!foundTargetNodeIds.empty()){
 
 
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject& msg = jsonBuffer.createObject();
+        DynamicJsonDocument msg(1024);
+        // JsonObject& msg = jsonBuffer.createObject();
         for (auto nodeId : foundTargetNodeIds) // access by reference to avoid copying
         {
             msg["foundack"] = nodeId;
             String str;
-            msg.printTo(str);
-            msg.printTo(Serial);
+            serializeJson(msg, str);
+            serializeJson(msg, Serial);
             Serial.printf("\n");
             mesh.sendBroadcast(str);
         }
@@ -55,17 +55,16 @@ void disableAck()
 
 void sendInitializationSignal()
 {
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& msg = jsonBuffer.createObject();
+    DynamicJsonDocument msg(16);
     msg["initialize"] = (maxRttDelay*2) + mesh.getNodeTime();
 
     String str;
-    msg.printTo(str);
+    serializeJson(msg, str);
     mesh.sendBroadcast(str);
 
     // log to serial
     Serial.printf("c2 initialization sent: ");
-    msg.printTo(Serial);
+    serializeJson(msg, Serial);
     Serial.printf("\n");
 }
 
@@ -110,8 +109,11 @@ void loop() {
 
 void receivedCallback( uint32_t from, String &msg ) {
   // Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(msg);
+  DynamicJsonDocument root(100);
+  DeserializationError error = deserializeJson(root, msg);
+  if (error)
+    Serial.printf("[Failed] Receiving callback.");
+    return;
   if (root.containsKey("from"))
     {
       long trueFrom = root["found"];
