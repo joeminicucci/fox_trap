@@ -437,7 +437,7 @@ void print_probe(clientinfo ci) {
 
 void sendAlert()
 {
-    DynamicJsonDocument msg(100);
+    StaticJsonDocument<100> msg;
     msg["from"] = ESP.getChipId();
     msg["found"] = ESP.getChipId();
     msg["rssi"] = lastFoundRSSI;
@@ -539,7 +539,7 @@ void snifferDisabled(){
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("[RECEIVED] from %u msg=%s\n", from, msg.c_str());
 
-    DynamicJsonDocument root(100);
+    StaticJsonDocument<100> root;
     DeserializationError error = deserializeJson(root, msg);
     if (error)
       Serial.printf("[FAILED] CALLBACK MESSAGE PARSE!");
@@ -557,7 +557,7 @@ void receivedCallback( uint32_t from, String &msg ) {
 
 //Fin ack is used to get the server to stop sending FIN messages
 void sendFinAck(){
-    DynamicJsonDocument msg(15);
+    StaticJsonDocument<15> msg;
     msg["from"] = ESP.getChipId();
     msg["fin_ack"] = ESP.getChipId();
     String str;

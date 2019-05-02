@@ -33,7 +33,7 @@ void acknowledgeTargets(){
     if (!foundTargetNodeIds.empty()){
 
 
-        DynamicJsonDocument msg(1024);
+        StaticJsonDocument<1024> msg;
         // JsonObject& msg = jsonBuffer.createObject();
         for (auto nodeId : foundTargetNodeIds) // access by reference to avoid copying
         {
@@ -55,7 +55,7 @@ void disableAck()
 
 void sendInitializationSignal()
 {
-    DynamicJsonDocument msg(16);
+    StaticJsonDocument<16> msg;
     msg["initialize"] = (maxRttDelay*2) + mesh.getNodeTime();
 
     String str;
@@ -109,7 +109,7 @@ void loop() {
 
 void receivedCallback( uint32_t from, String &msg ) {
   // Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
-  DynamicJsonDocument root(100);
+  StaticJsonDocument<100> root;
   DeserializationError error = deserializeJson(root, msg);
   if (error)
     Serial.printf("[Failed] Receiving callback.");
