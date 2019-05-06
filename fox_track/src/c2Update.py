@@ -43,7 +43,7 @@ def writeCommand(command, serialPort, interactive):
             time.sleep(0.1)
             command = sys.stdin.readline()
             print 'command is ' + command
-            if len(command) > 16:
+            if len(command) > 17:
                 print 'command is too long, try again'
                 continue
             else:
