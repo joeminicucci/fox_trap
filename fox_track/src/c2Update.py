@@ -6,7 +6,7 @@ import time
 
 def main(argv):
     # mode = 1
-    parser = argparse.ArgumentParser(description='Update the C2')
+    parser = argparse.ArgumentParser(description='Update the C2. Commands (rem, tar) are meant to contain a single MAC address in lowercase format, e.g. 1337af666666.')
     parser.add_argument('-s', "--serialPort",
     help='The serial port to monitor',
     required=True)
@@ -30,19 +30,27 @@ def main(argv):
 
 
 def writeCommand(command, serialPort, interactive):
-    serialCom = serial.Serial(serialPort, 115200)
-    if serialCom.isOpen():
+    try:
+        serialCom = serial.Serial(serialPort, 115200)
+        if serialCom.isOpen():
+            serialCom.close()
+
+        serialCom.open()
+        commToSerial(command, serialCom);
+        print 'wrote ' + command + ' to serial port ' + serialPort
+
+        while (interactive):
+            time.sleep(0.1)
+            command = sys.stdin.readline()
+            print 'command is ' + command
+            if len(command) > 16:
+                print 'command is too long, try again'
+                continue
+            else:
+                commToSerial(command, serialCom)
+    except KeyboardInterrupt:
+        print '\n KILLED\n'
         serialCom.close()
-
-    serialCom.open()
-    commToSerial(command, serialCom);
-    print 'wrote ' + command + ' to serial port ' + serialPort
-
-    while (interactive):
-        time.sleep(0.1)
-        command = sys.stdin.readline()
-        print 'command is ' + command
-        commToSerial(command, serialCom)
 
 def commToSerial(command, serialCom):
     # if serialCom.isOpen():

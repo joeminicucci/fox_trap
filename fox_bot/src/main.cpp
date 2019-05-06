@@ -23,12 +23,7 @@ uint32_t alertTimes = 20;
 #define   MESH_PORT       5566
 
 //set targets here
-std::vector<std::array<uint8_t, 6> > _targets =
-        {
-          { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-          { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 }
-        };
-
+std::vector<std::array<uint8_t, 6> > _targets;
 
 #define DISABLE 0
 #define ENABLE  1
@@ -556,12 +551,12 @@ void receivedCallback( uint32_t from, String &msg ) {
         }
     }
     //Add a target
-    if (root.containsKey("targ")){
-        String targToAdd = root["targ"];
+    if (root.containsKey("tar")){
+        String targToAdd = root["tar"];
         addTarget(targToAdd);
     }
-    if (root.containsKey("remov")){
-        String targToAdd = root["remov"];
+    if (root.containsKey("rem")){
+        String targToAdd = root["rem"];
         removeTarget(targToAdd);
     }
 }
