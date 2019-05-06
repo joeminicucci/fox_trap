@@ -40,7 +40,7 @@ void acknowledgeTargets(){
             msg["foundack"] = nodeId;
             String str;
             serializeJson(msg, str);
-            serializeJson(msg, Serial);
+            serializeJsonPretty(msg, Serial);
             Serial.printf("\n");
             mesh.sendBroadcast(str);
         }
@@ -64,7 +64,7 @@ void sendInitializationSignal()
 
     // log to serial
     Serial.printf("c2 initialization sent: ");
-    serializeJson(msg, Serial);
+    serializeJsonPretty(msg, Serial);
     Serial.printf("\n");
 }
 
@@ -110,10 +110,8 @@ void loop() {
 void receivedCallback( uint32_t from, String &msg ) {
   // Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
   StaticJsonDocument<100> root;
-  DeserializationError error = deserializeJson(root, msg);
-  if (error)
-    Serial.printf("[Failed] Receiving callback.");
-    return;
+  deserializeJson(root, msg);
+
   if (root.containsKey("from"))
     {
       long trueFrom = root["found"];

@@ -5,8 +5,8 @@ extern "C"
 
 #include <painlessMesh.h>
 #include <cstdint>
-#include "structures.h"
-#include "sniffing.h"
+#include "../lib/structures.h"
+#include "../lib/sniffing.h"
 
 // Define these youself to customize the mesh mode operations
 uint16_t channel = 6;
@@ -54,6 +54,9 @@ struct clientinfo parse_probe(uint8_t *frame, uint16_t framelen, signed rssi, un
 int register_probe(clientinfo probe);
 void print_probe(clientinfo ci);
 uint32_t roundUp(uint32_t numToRound, uint32_t multiple);
+std::array<uint8_t,6> hexToBytes(const std::string& hex);
+void addTarget(const String& target);
+void removeTarget(const String& target);
 
 signed lastFoundRSSI = 0;
 int lastFoundChannel = 0;
@@ -449,7 +452,7 @@ void sendAlert()
     mesh.sendBroadcast(str);
 
     // log to serial
-    serializeJson(msg, Serial);
+    serializeJsonPretty(msg, Serial);
     Serial.printf("\n");
 
 }
@@ -540,10 +543,9 @@ void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("[RECEIVED] from %u msg=%s\n", from, msg.c_str());
 
     StaticJsonDocument<100> root;
-    DeserializationError error = deserializeJson(root, msg);
-    if (error)
-      Serial.printf("[FAILED] CALLBACK MESSAGE PARSE!");
-      return;
+    deserializeJson(root, msg);
+
+    //alert acknowledgement
     if (_sendAlertTask.isEnabled() && root.containsKey("foundack") ){
         if (root["foundack"] == ESP.getChipId())
         {
@@ -553,17 +555,26 @@ void receivedCallback( uint32_t from, String &msg ) {
             _sendAlertTask.disable();
         }
     }
+    //Add a target
+    if (root.containsKey("targ")){
+        String targToAdd = root["targ"];
+        addTarget(targToAdd);
+    }
+    if (root.containsKey("remov")){
+        String targToAdd = root["remov"];
+        removeTarget(targToAdd);
+    }
 }
 
 //Fin ack is used to get the server to stop sending FIN messages
 void sendFinAck(){
-    StaticJsonDocument<15> msg;
+    StaticJsonDocument<30> msg;
     msg["from"] = ESP.getChipId();
     msg["fin_ack"] = ESP.getChipId();
     String str;
     serializeJson(msg, str);
     mesh.sendBroadcast(str);
-    serializeJson(msg, str);
+    // serializeJson(msg, str);
     Serial.printf("\n");
 }
 
@@ -595,6 +606,51 @@ uint32_t roundUp(uint32_t numToRound, uint32_t multiple)
         return numToRound;
 
     return numToRound + multiple - remainder;
+}
+
+std::array<uint8_t,6> hexToBytes(const String& hex) {
+  std::array<uint8_t,6> bytes;
+
+  for (unsigned int i = 0; i < hex.length() && i < 12; i += 2) {
+    String byteString = hex.substring(i, i+2);
+    // Serial.printf("i= %i; byteString=%s\n",i,byteString.c_str());
+    uint8_t byte = (unsigned char) strtol(byteString.c_str(), NULL, 16);
+      bytes[i/2] = byte;
+  }
+
+  return bytes;
+}
+
+
+void addTarget(const String& targ) {
+  auto searchQuery = hexToBytes(targ);
+  //Search
+  std::vector<std::array<uint8_t, 6>>::iterator position =
+      std::find(_targets.begin(), _targets.end(), searchQuery);
+
+  //Not found, add
+  if (position == _targets.end()) {// == myVector.end() means the element was not found {
+    _targets.push_back(searchQuery);
+  }
+  // for (const auto &target : _targets) {
+  //       printf("%02x:%02x:%02x:%02x:%02x:%02x\n", target[0], target[1], target[2], target[3], target[4], target[5]);
+  //   }
+}
+
+void removeTarget (const String& targ) {
+  auto searchQuery = hexToBytes(targ);
+  //Search
+  std::vector<std::array<uint8_t, 6>>::iterator position =
+      std::find(_targets.begin(), _targets.end(), searchQuery);
+
+  //found, delete
+  if (position != _targets.end()) {// == myVector.end() means the element was not found {
+    _targets.erase(position);
+  }
+
+  // for (const auto &target : _targets) {
+  //       printf("%02x:%02x:%02x:%02x:%02x:%02x\n", target[0], target[1], target[2], target[3], target[4], target[5]);
+  // }
 }
 
 void onTimeAdjusted(int32_t offset){
