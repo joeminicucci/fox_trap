@@ -179,7 +179,7 @@ String prepCommandForMesh(const String &command){
   comMsg[commandAlias] = commandValue.c_str();
 
   //for debugging
-  // serializeJsonPretty(comMsg, Serial);
+  serializeJsonPretty(comMsg, Serial);
   // Serial.println();
   String jsonStr;
   serializeJson(comMsg, jsonStr);

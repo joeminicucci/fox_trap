@@ -35,6 +35,8 @@ void channelHop();
 void resync();
 void meshDisabled();
 void snifferDisabled();
+
+void meshInitialization();
 void receivedCallback( uint32_t from, String &msg );
 uint32_t CalculateSynchronizationDelay();
 void onTimeAdjusted(int32_t offset);
@@ -480,6 +482,7 @@ void openMeshComm(bool restartSnifferDelayed){
     wifi_set_opmode(STATIONAP_MODE);
     wifi_promiscuous_enable(DISABLE);
 
+    mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, channel);
     if (restartSnifferDelayed)
     {
         snifferInitializationTask.restartDelayed(meshCommInterval);
@@ -489,6 +492,7 @@ void openMeshComm(bool restartSnifferDelayed){
 
 bool initializeSniffer(){
     botInitializationTask.restartDelayed(sniffInterval);
+    mesh.stop();
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(ENABLE);
 
