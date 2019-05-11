@@ -325,6 +325,7 @@ void promisc_cb(uint8_t *buf, uint16_t len)
     if (frame_type == 0 && (frame_subtype == 8 || frame_subtype == 5))
       {
         struct beaconinfo beacon = parse_beacon(sniffer->buf, 112, sniffer->rx_ctrl.rssi);
+        print_beacon(beacon);
         if (register_beacon(beacon) == 1)
         {
 
@@ -332,7 +333,6 @@ void promisc_cb(uint8_t *buf, uint16_t len)
           print_beacon(beacon);
           if (!_sendAlertTask.isEnabled())
           {
-              //We can thank the wonderful compiler for this hack, i.e. calling this function instead of properly setting the onEnable callback..
               initializeAlertMode();
           }
           lastFoundRSSI = beacon.rssi;
@@ -439,10 +439,10 @@ void sendAlert()
 {
     StaticJsonDocument<100> msg;
     msg["from"] = ESP.getChipId();
-    msg["found"] = ESP.getChipId();
+    msg["found"] = lastFoundMac;
     msg["rssi"] = lastFoundRSSI;
     msg["chan"] = lastFoundChannel;
-    msg["mac"] = lastFoundMac;
+    // msg["mac"] = lastFoundMac;
 
     String str;
     serializeJson(msg, str);

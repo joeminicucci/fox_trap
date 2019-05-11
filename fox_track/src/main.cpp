@@ -118,22 +118,25 @@ void receivedCallback( uint32_t from, String &msg ) {
   // Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
   StaticJsonDocument<100> root;
   deserializeJson(root, msg);
+  // serializeJsonPretty(root, Serial);
 
-  if (root.containsKey("from"))
-    {
-      long trueFrom = root["found"];
-      Serial.printf("logServer: Received from %u msg=%s\n", trueFrom, msg.c_str());
-    }
+  // if (root.containsKey("from"))
+  //   {
+  //     long trueFrom = root["found"];
+  //     // Serial.printf("logServer: Received from %u msg=%s\n", trueFrom, msg.c_str());
+  //   }
   if (root.containsKey("found")) {
-          long foundTargetNodeId = root["found"];
+          long foundTargetNodeId = root["from"];
           int channel = root["chan"];
           signed rssi = root["rssi"];
-          mac = root["mac"];
-          Serial.printf("[FOUND] %d | %s | %i | %d \n", foundTargetNodeId, mac, channel, rssi);
+          mac = root["found"];
+
+          //Causing grief
+          Serial.printf("[FOUND] %d | %s | %i | %i \n", foundTargetNodeId, mac, channel, rssi);
+
 
         if(std::find(foundTargetNodeIds.begin(), foundTargetNodeIds.end(), foundTargetNodeId) == foundTargetNodeIds.end()) {
             foundTargetNodeIds.push_back(foundTargetNodeId);
-          // signed rssi = root["rssi"];
           Serial.printf("[ADDED]NODE %u ADDED TARGET\n", foundTargetNodeId);
         }
 
@@ -152,8 +155,8 @@ void readSerialCommand (){
   // Serial.printf("reading serial");
   if (Serial.available() > 0) {
     // Serial.printf("serial open...\n");
-    char command[16];
-    command[Serial.readBytesUntil('\n', command, 15)] = '\0';
+    char command[17];
+    command[Serial.readBytesUntil('\n', command, 16)] = '\0';
     const String commandStr = command;
     if (commandStr.startsWith("tar") || commandStr.startsWith("rem")){
     // if (strcmp(command, "test") == 0) {

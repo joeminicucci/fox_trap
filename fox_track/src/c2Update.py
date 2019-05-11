@@ -13,7 +13,7 @@ def main(argv):
 
     parser.add_argument('-c', "--command",
     help='The command to issue',
-    required=True)
+    required=False)
 
     parser.add_argument('-i', "--interactive",
     help='stdin interactive mode',
@@ -21,6 +21,8 @@ def main(argv):
     action='store_true')
 
     args = parser.parse_args()
+    if not args.command and not args.interactive:
+        parser.error('Must supply either/both a command and the interactive switch.')
     # if '-s' in args || '--serialPort'
     serialPort = args.serialPort
     command = args.command
@@ -31,13 +33,10 @@ def main(argv):
 
 def writeCommand(command, serialPort, interactive):
     try:
-        serialCom = serial.Serial(serialPort, 115200)
-        if serialCom.isOpen():
-            serialCom.close()
-
-        serialCom.open()
-        commToSerial(command, serialCom);
-        print 'wrote ' + command + ' to serial port ' + serialPort
+        serialCom = openSerial(serialPort)
+        if command:
+            commToSerial(command, serialCom);
+            print 'wrote ' + command + ' to serial port ' + serialPort
 
         while (interactive):
             time.sleep(0.1)
@@ -52,13 +51,20 @@ def writeCommand(command, serialPort, interactive):
         print '\n KILLED\n'
         serialCom.close()
 
+def openSerial(serialPort):
+    serialCom = serial.Serial(serialPort, 115200)
+    if serialCom.isOpen():
+        serialCom.close()
+    serialCom.open()
+    return serialCom
+    
 def commToSerial(command, serialCom):
     # if serialCom.isOpen():
     #     serialCom.close()
     #
     # serialCom.open()
     serialCom.flushInput()
-    serialCom.write(command+'\n')
+    serialCom.write(command.lower()+'\n')
 
 if __name__ == "__main__":
         main(sys.argv)
