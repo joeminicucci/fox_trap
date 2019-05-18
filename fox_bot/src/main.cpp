@@ -35,6 +35,8 @@ void channelHop();
 void resync();
 void meshDisabled();
 void snifferDisabled();
+
+void meshInitialization();
 void receivedCallback( uint32_t from, String &msg );
 uint32_t CalculateSynchronizationDelay();
 void onTimeAdjusted(int32_t offset);
@@ -320,9 +322,11 @@ void promisc_cb(uint8_t *buf, uint16_t len)
     uint8_t frame_type = (frame_control_pkt & 0x0C) >> 2;
     uint8_t frame_subtype = (frame_control_pkt & 0xF0) >> 4;
     struct sniffer_buf2 *sniffer = (struct sniffer_buf2*) buf;
+    //beacon / probe response
     if (frame_type == 0 && (frame_subtype == 8 || frame_subtype == 5))
       {
         struct beaconinfo beacon = parse_beacon(sniffer->buf, 112, sniffer->rx_ctrl.rssi);
+        print_beacon(beacon);
         if (register_beacon(beacon) == 1)
         {
 
@@ -330,7 +334,6 @@ void promisc_cb(uint8_t *buf, uint16_t len)
           print_beacon(beacon);
           if (!_sendAlertTask.isEnabled())
           {
-              //We can thank the wonderful compiler for this hack, i.e. calling this function instead of properly setting the onEnable callback..
               initializeAlertMode();
           }
           lastFoundRSSI = beacon.rssi;
@@ -338,7 +341,8 @@ void promisc_cb(uint8_t *buf, uint16_t len)
           getMAC(lastFoundMac, beacon.bssid);
         };
       }
-      else
+      //TODO program frame subtype 4 (probe) in as a mode with a shared json payload w/ beacon searching https://en.wikipedia.org/wiki/802.11_Frame_Types
+      else if (frame_type == 0 && (frame_subtype == 4))
       {
         struct sniffer_buf *sniffer = (struct sniffer_buf*) buf;
         struct clientinfo probe = parse_probe(sniffer->buf, 36, sniffer->rx_ctrl.rssi, sniffer->rx_ctrl.channel);
@@ -436,11 +440,11 @@ void print_probe(clientinfo ci) {
 void sendAlert()
 {
     StaticJsonDocument<100> msg;
-    msg["from"] = ESP.getChipId();
-    msg["found"] = ESP.getChipId();
+    // msg["from"] = mesh.getNodeId();
+    msg["found"] = lastFoundMac;
     msg["rssi"] = lastFoundRSSI;
     msg["chan"] = lastFoundChannel;
-    msg["mac"] = lastFoundMac;
+    // msg["mac"] = lastFoundMac;
 
     String str;
     serializeJson(msg, str);
@@ -477,9 +481,10 @@ bool botInitialization()
 }
 
 void openMeshComm(bool restartSnifferDelayed){
-    wifi_set_opmode(STATIONAP_MODE);
+    //wifi_set_opmode(STATIONAP_MODE);
     wifi_promiscuous_enable(DISABLE);
 
+    mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, channel);
     if (restartSnifferDelayed)
     {
         snifferInitializationTask.restartDelayed(meshCommInterval);
@@ -489,6 +494,7 @@ void openMeshComm(bool restartSnifferDelayed){
 
 bool initializeSniffer(){
     botInitializationTask.restartDelayed(sniffInterval);
+    mesh.stop();
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(ENABLE);
 
@@ -516,7 +522,7 @@ void setup() {
     wifi_set_promiscuous_rx_cb(promisc_cb);
     meshInitialization();
 
-  Serial.printf("ID %d : \n",ESP.getChipId());
+  Serial.printf("ID %d : \n",mesh.getNodeId());
 }
 
 void loop() {
@@ -541,14 +547,16 @@ void receivedCallback( uint32_t from, String &msg ) {
     deserializeJson(root, msg);
 
     //alert acknowledgement
-    if (_sendAlertTask.isEnabled() && root.containsKey("foundack") ){
-        if (root["foundack"] == ESP.getChipId())
-        {
-            //Get the server to be quiet
-            sendFinAck();
-            //pull out of alerted state
-            _sendAlertTask.disable();
-        }
+    if (_sendAlertTask.isEnabled()
+        && root.containsKey("foundack")) {
+            uint32_t ackNode = root["foundack"];
+            if (ackNode == mesh.getNodeId())
+            {
+              //Get the server to be quiet
+              sendFinAck();
+              //pull out of alerted state
+              _sendAlertTask.disable();
+            }
     }
     //Add a target
     if (root.containsKey("tar")){
@@ -564,12 +572,12 @@ void receivedCallback( uint32_t from, String &msg ) {
 //Fin ack is used to get the server to stop sending FIN messages
 void sendFinAck(){
     StaticJsonDocument<30> msg;
-    msg["from"] = ESP.getChipId();
-    msg["fin_ack"] = ESP.getChipId();
+    // msg["from"] = mesh.getNodeId();
+    msg["fin_ack"] = "1";
     String str;
     serializeJson(msg, str);
+    serializeJsonPretty(msg, Serial);
     mesh.sendBroadcast(str);
-    // serializeJson(msg, str);
     Serial.printf("\n");
 }
 

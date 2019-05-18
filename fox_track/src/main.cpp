@@ -16,7 +16,7 @@ uint16_t channel = 6;
 int32_t maxRttDelay = 0;
 unsigned long initDelay = 15000000;
 uint32_t acknowledgementInterval = 900000; //ms
-std::vector<long> foundTargetNodeIds;
+std::vector<uint32_t> foundTargetNodeIds;
 const char* mac;
 const char delimiter = ' ';
 
@@ -115,26 +115,22 @@ void loop() {
 }
 
 void receivedCallback( uint32_t from, String &msg ) {
-  // Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
-  StaticJsonDocument<100> root;
+  Serial.printf("[RECEIVED] from %u msg=%s\n", from, msg.c_str());
+  StaticJsonDocument<120> root;
   deserializeJson(root, msg);
-
-  if (root.containsKey("from"))
-    {
-      long trueFrom = root["found"];
-      Serial.printf("logServer: Received from %u msg=%s\n", trueFrom, msg.c_str());
-    }
   if (root.containsKey("found")) {
-          long foundTargetNodeId = root["found"];
-          int channel = root["chan"];
-          signed rssi = root["rssi"];
-          mac = root["mac"];
-          Serial.printf("[FOUND] %d | %s | %i | %d \n", foundTargetNodeId, mac, channel, rssi);
+        // serializeJsonPretty(root, Serial);
+        // Serial.printf("\n");
+        //uint32_t foundTargetNodeId = root["from"];
+        uint16_t chan = root["chan"];
+        signed rssi = root["rssi"];
+        mac = root["found"];
 
-        if(std::find(foundTargetNodeIds.begin(), foundTargetNodeIds.end(), foundTargetNodeId) == foundTargetNodeIds.end()) {
-            foundTargetNodeIds.push_back(foundTargetNodeId);
-          // signed rssi = root["rssi"];
-          Serial.printf("[ADDED]NODE %u ADDED TARGET\n", foundTargetNodeId);
+        Serial.printf("[FOUND] %d | %s | %d | %i \n", from, mac, chan, rssi);
+
+        if(std::find(foundTargetNodeIds.begin(), foundTargetNodeIds.end(), from) == foundTargetNodeIds.end()) {
+            foundTargetNodeIds.push_back(from);
+          Serial.printf("[ADDED]NODE %u ADDED TARGET\n", from);
         }
 
         //checks if it is diabled and re-enables it. if it is out of iterations AND disabled, restart
@@ -144,7 +140,9 @@ void receivedCallback( uint32_t from, String &msg ) {
   }
 
   if (root.containsKey("fin_ack")){
-      foundTargetNodeIds.erase(std::remove(foundTargetNodeIds.begin(), foundTargetNodeIds.end(), root["fin_ack"]), foundTargetNodeIds.end());
+      // serializeJsonPretty(root, Serial);
+      // Serial.printf("\n");
+      foundTargetNodeIds.erase(std::remove(foundTargetNodeIds.begin(), foundTargetNodeIds.end(), from), foundTargetNodeIds.end());
   }
 }
 
@@ -152,8 +150,8 @@ void readSerialCommand (){
   // Serial.printf("reading serial");
   if (Serial.available() > 0) {
     // Serial.printf("serial open...\n");
-    char command[16];
-    command[Serial.readBytesUntil('\n', command, 15)] = '\0';
+    char command[17];
+    command[Serial.readBytesUntil('\n', command, 16)] = '\0';
     const String commandStr = command;
     if (commandStr.startsWith("tar") || commandStr.startsWith("rem")){
     // if (strcmp(command, "test") == 0) {
@@ -179,7 +177,7 @@ String prepCommandForMesh(const String &command){
   comMsg[commandAlias] = commandValue.c_str();
 
   //for debugging
-  // serializeJsonPretty(comMsg, Serial);
+  serializeJsonPretty(comMsg, Serial);
   // Serial.println();
   String jsonStr;
   serializeJson(comMsg, jsonStr);
