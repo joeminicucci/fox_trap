@@ -11,4 +11,4 @@ channel=$(cat "$channelfile")
 echo $mac
 echo $channel
 
-airodump-ng -c $channel --bssid $mac -w output l
+/usr/sbin/airodump-ng -c $channel --bssid $mac -w output wlan0mon

@@ -5,3 +5,7 @@
 firmware.elf
 Channel.txt
 Mac.txt
+src/*.old
+src/*.cap
+src/*.csv
+src/*.netxml
