@@ -8,6 +8,13 @@ We recommend using Atom IDE and PlatfomIO as a development environment. Assuming
 * [PlatformIO](https://github.com/esp8266/arduino#using-platformio)
 * **OPTIONAL** [Signal-CLI](https://github.com/AsamK/signal-cli)
 
+### Versioning
+The last known good upstream versions of Fox Trap's dependencies are the following:
+* ArduinoJson@6.11.0
+* painlessMesh@1.4.0
+
+Around July 2019, one of the upstream dependencies completely broke the Task Scheduling functionality of the project, therefore it is recommended to run using the above listed dependency versions.
+
 ## Configuration
 The design philosophy of the framework is to base all decisions off of the interval lengths of each task. To understand the tasks, please see the Software Implementation Section below. Otherwise you may run it with the default values and skip to the Usage section.
 
@@ -158,7 +165,7 @@ Fundamentally, bots should all be in communication at the same time so that node
 
 ## License
 
-This project is licensed under the GNU General Public License - see the [LICENSE.gpl](LICENSE.gpl) file for details
+This project is licensed under The MIT License - see the [LICENSE.mit](LICENSE.mit) file for details
 
 ## Acknowledgments
 
