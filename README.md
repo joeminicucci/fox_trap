@@ -175,6 +175,7 @@ This project is licensed under The MIT License - see the [LICENSE.mit](LICENSE.m
 ## TODO
  * Ideas for future c2 updates (sorted least-most effort)
    * Remove all bssids command
+   * Sync the NTP interval with the python updater so the command propagation does not need to be timed by operator
    * Change MAC addresses, SSID, and WIFI password to subvert adversarial traffic / attack (over the air)
    * Weaponization (most likely better suited to other projects)
      * Beacon / Probe spamming to disinform
