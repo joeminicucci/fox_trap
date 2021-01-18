@@ -1,6 +1,7 @@
 # Fox Trap
 
 Accompanying blog post is [located here.](https://blog.joeminicucci.com/2019/wireless-implant-c2-security-ops)
+
 Fox Trap is a wireless mesh based Command and Control infrastructure for locating mobile rogue access points. The original idea was to plant cheap wireless SOCs in a wireless theater which could detect multiple rogue aps as well as receive commands. Each **[Bot Node](https://github.com/joeminicucci/fox_trap/blob/master/fox_bot)** works by having tasks run synchronously, such as wireless packet sniffing, and then dropping into a communication mode where the mesh network exchanges information and passes it back to a **[Root Node](https://github.com/joeminicucci/fox_trap/tree/master/fox_track)**. The framework was written for the [ESP8266](https://www.espressif.com/en/products/hardware/esp8266ex/overview) and leverages the [EspressIf ESP-SDK](hhttps://www.espressif.com/en/products/software/esp-sdk/overview). Other chips utilizing the ESP-SDK should also be compatible. The current implementation scans for probes or beacons which originate from any of the target BSSIDs defined.
 
 ## Installation
